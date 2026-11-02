@@ -8,6 +8,11 @@ function keTanggal(input) {
   return new Date(input)
 }
 
+export function parseRupiah(str) {
+  const cleaned = String(str || '').replace(/[^0-9]/g, '')
+  return Number(cleaned) || 0
+}
+
 export function formatRupiah(angka) {
   const num = Number(angka) || 0
   return 'Rp ' + num.toLocaleString('id-ID', { maximumFractionDigits: 0 })
