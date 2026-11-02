@@ -6,6 +6,16 @@ export function normalisasiNomor(nomor) {
   return '62' + cleaned
 }
 
+import { formatRupiah, formatTanggal } from './format.js'
+
+export function buatPesanTagihan({ nama, nama_kos, nomor_kamar, periode, jumlah, jatuh_tempo, terlambat }) {
+  const kos = nama_kos || 'kos kami'
+  if (terlambat) {
+    return `Halo ${nama}, tagihan kos ${kos} kamar ${nomor_kamar} periode ${periode} sebesar ${formatRupiah(jumlah)} sudah melewati jatuh tempo (${formatTanggal(jatuh_tempo)}). Mohon segera dilunasi ya. Terima kasih.`
+  }
+  return `Halo ${nama}, mengingatkan tagihan kos ${kos} kamar ${nomor_kamar} periode ${periode} sebesar ${formatRupiah(jumlah)}, jatuh tempo ${formatTanggal(jatuh_tempo)}. Terima kasih.`
+}
+
 export function buatLinkWA(nomor, pesan) {
   const normalized = normalisasiNomor(nomor)
   if (!normalized) return ''

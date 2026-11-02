@@ -2,12 +2,18 @@ import { useState, useMemo } from 'react'
 import { useAuth } from '../hooks/useAuth.jsx'
 import { useTagihan } from '../hooks/useTagihan.jsx'
 import { formatRupiah, formatTanggal } from '../lib/format.js'
+import { buatPesanTagihan, buatLinkWA, normalisasiNomor } from '../lib/whatsapp.js'
+import { unduhKwitansi } from '../lib/kwitansi.js'
+import { useProfil } from '../hooks/useProfil.jsx'
+import { useToast } from '../components/Toast.jsx'
 import Modal from '../components/Modal.jsx'
 import ConfirmDialog from '../components/ConfirmDialog.jsx'
 import EmptyState from '../components/EmptyState.jsx'
 
 export default function Tagihan() {
   const { user } = useAuth()
+  const profil = useProfil()
+  const { show } = useToast()
   const { list, filteredList, loading, error, periode, setPeriode, statusFilter, setStatusFilter, reload, buatTagihan, tandaiLunas, batalkanLunas, ringkasan } = useTagihan()
   const [openMark, setOpenMark] = useState(false)
   const [markId, setMarkId] = useState(null)
@@ -107,6 +113,18 @@ export default function Tagihan() {
               )}
               {i.status === 'lunas' && (
                 <button onClick={() => { setCancelId(i.id); setOpenCancel(true) }} className="flex-1 py-2 rounded-xl bg-amber-50 text-amber-700 text-sm font-bold hover:bg-amber-100 transition">Batalkan Lunas</button>
+              )}
+              {i.status === 'belum' && (
+                <button onClick={() => {
+                  const nomor = i.sewa?.penghuni?.no_hp || ''
+                  if (!normalisasiNomor(nomor)) return show('Nomor HP tidak valid', 'error')
+                  const terlambat = i.status === 'belum' && (i.jatuh_tempo || '') < new Date().toISOString().split('T')[0]
+                  const msg = buatPesanTagihan({ nama: i.sewa?.penghuni?.nama || '-', nama_kos: profil?.nama_kos || 'kos kami', nomor_kamar: i.sewa?.kamar?.nomor || '-', periode: i.periode || '', jumlah: i.jumlah || 0, jatuh_tempo: i.jatuh_tempo || '', terlambat })
+                  window.open(buatLinkWA(nomor, msg), '_blank', 'noopener')
+                }} className="px-3 py-2 rounded-xl bg-emerald-50 text-emerald-700 text-xs font-bold hover:bg-emerald-100 transition">Ingatkan WA</button>
+              )}
+              {i.status === 'lunas' && (
+                <button onClick={() => unduhKwitansi(i, profil)} className="px-3 py-2 rounded-xl bg-blue-50 text-blue-700 text-xs font-bold hover:bg-blue-100 transition">Kwitansi</button>
               )}
             </div>
           </div>
