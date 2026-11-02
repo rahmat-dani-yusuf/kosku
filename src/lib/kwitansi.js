@@ -1,5 +1,5 @@
 import { jsPDF } from 'jspdf'
-import { formatRupiah, terbilang } from './format.js'
+import { formatRupiah, terbilang, formatPeriode, formatTanggal } from './format.js'
 
 export function unduhKwitansi(tagihan, profil) {
   const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a5' })
@@ -13,8 +13,8 @@ export function unduhKwitansi(tagihan, profil) {
   doc.setFont('helvetica', 'normal')
   doc.setFontSize(9)
   doc.text(`Kos: ${profil?.nama_kos || 'Kos kami'}`, 10, 20)
-  doc.text(`Alamat: ${profil?.alamat || '-'}`, 10, 24)
-  doc.text(`No. WA: ${profil?.no_wa || '-'}`, 10, 28)
+  if (profil?.alamat) doc.text(`Alamat: ${profil.alamat}`, 10, 24)
+  if (profil?.no_wa) doc.text(`No. WA: ${profil.no_wa}`, 10, profil?.alamat ? 28 : 24)
 
   const idCode = (tagihan.id || '').toString().toUpperCase().slice(0, 6).padEnd(6, '0')
   const periodeStr = tagihan.periode || ''
@@ -29,11 +29,11 @@ export function unduhKwitansi(tagihan, profil) {
   const rows = [
     ['Nama Penghuni', tagihan.sewa?.penghuni?.nama || '-'],
     ['Nomor Kamar', tagihan.sewa?.kamar?.nomor || '-'],
-    ['Periode Sewa', periodeStr || '-'],
+    ['Periode Sewa', formatPeriode(tagihan.periode || '') || '-'],
     ['Jumlah', formatRupiah(tagihan.jumlah || 0)],
     ['Jumlah Terbilang', terbilang(tagihan.jumlah || 0)],
-    ['Tanggal Bayar', tagihan.tanggal_bayar || '-'],
-    ['Metode Bayar', tagihan.metode || '-'],
+    ['Tanggal Bayar', tagihan.tanggal_bayar ? formatTanggal(tagihan.tanggal_bayar) : '-'],
+    ['Metode Bayar', tagihan.metode ? tagihan.metode.charAt(0).toUpperCase() + tagihan.metode.slice(1) : '-'],
   ]
 
   let y = 36
