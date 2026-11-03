@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="100%" height="100%">
+  <rect width="512" height="512" fill="#059669"/>
+  <g fill="#ffffff">
+    <!-- house -->
+    <path d="M130 300 L256 160 L382 300 L382 420 L130 420 Z"/>
+    <rect x="230" y="320" width="52" height="100" fill="#059669" stroke="#fff" stroke-width="4"/>
+    <rect x="240" y="340" width="32" height="40" fill="#fff"/>
+  </g>
+  <!-- K -->
+  <text x="256" y="470" font-size="120" font-family="system-ui, sans-serif" font-weight="bold" text-anchor="middle" fill="#ffffff">K</text>
+</svg>

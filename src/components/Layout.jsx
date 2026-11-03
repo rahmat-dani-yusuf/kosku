@@ -17,6 +17,7 @@ export default function Layout() {
   const { user } = useAuth()
   const [kosName, setKosName] = useState('Kosku')
   const [mobileMenu, setMobileMenu] = useState(false)
+  const [offline, setOffline] = useState(!navigator.onLine)
   const location = useLocation()
 
   useEffect(() => {
@@ -28,6 +29,14 @@ export default function Layout() {
   useEffect(() => {
     setMobileMenu(false)
   }, [location.pathname])
+
+  useEffect(() => {
+    const on = () => setOffline(false)
+    const off = () => setOffline(true)
+    window.addEventListener('online', on)
+    window.addEventListener('offline', off)
+    return () => { window.removeEventListener('online', on); window.removeEventListener('offline', off) }
+  }, [])
 
   const isActive = (to) => location.pathname === to || (to !== '/' && location.pathname.startsWith(to))
 
@@ -59,6 +68,12 @@ export default function Layout() {
 
       {/* Main */}
       <main className="flex-1 md:ml-72 md:pb-0 pb-16">
+        {offline && (
+          <div className="mx-4 mt-3 rounded-xl bg-red-50 border border-red-200 text-red-800 px-4 py-2 text-sm font-semibold shadow-sm flex items-center gap-2">
+            <span>⚠</span> Anda sedang offline, data tidak dapat dimuat
+          </div>
+        )}
+
         <header className="sticky top-0 z-20 bg-white/70 backdrop-blur-md border-b border-emerald-100 md:hidden px-5 py-4 flex items-center justify-between shadow-sm">
           <h1 className="text-lg font-extrabold text-emerald-800 truncate">{kosName}</h1>
           <button onClick={() => setMobileMenu(!mobileMenu)} className="p-2 rounded-xl bg-emerald-50 text-emerald-700 font-bold text-xs">Menu</button>

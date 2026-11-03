@@ -8,13 +8,26 @@ import { supabase } from '../lib/supabaseClient.js'
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts'
 import { buatLinkWA, buatPesanTagihan } from '../lib/whatsapp.js'
 import { useToast } from '../components/Toast.jsx'
+import TombolPasang from '../components/TombolPasang.jsx'
 
 export default function Beranda() {
   const { user } = useAuth()
   const profil = useProfil()
   const { show } = useToast()
   const { kamar, tagihan, sewaAktif, loading, error, okupansi, ringkasanPendapatan, tunggakan, jatuhTempo7, menunggak, grafikPendapatan } = useDashboard()
+  const [showInstallBanner, setShowInstallBanner] = useState(true)
+  const [installAvailable, setInstallAvailable] = useState(false)
+  const [installed, setInstalled] = useState(false)
   const [nama, setNama] = useState('')
+
+  useEffect(() => {
+    const handle = (e) => { e.preventDefault(); setInstallAvailable(true); }
+    window.addEventListener('beforeinstallprompt', handle)
+    const installedHandler = () => setInstalled(true)
+    window.addEventListener('appinstalled', installedHandler)
+    if (window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone) setInstalled(true)
+    return () => { window.removeEventListener('beforeinstallprompt', handle); window.removeEventListener('appinstalled', installedHandler) }
+  }, [])
 
   useEffect(() => {
     if (!user) return
@@ -39,6 +52,15 @@ export default function Beranda() {
         <p className="text-emerald-100 mt-2 relative z-10">Ringkasan bisnis kos Anda hari ini.</p>
         <Link to="/tagihan" className="inline-block mt-6 px-5 py-3 rounded-xl bg-white text-emerald-700 font-extrabold shadow-lg hover:bg-emerald-50 transition relative z-10">Buat Tagihan Bulan Ini</Link>
       </div>
+
+      {showInstallBanner && installAvailable && !installed && (
+        <div className="flex items-center justify-between gap-3 bg-emerald-50 border border-emerald-100 rounded-2xl px-4 py-3 shadow-sm">
+          <div className="flex items-center gap-3">
+            <TombolPasang />
+          </div>
+          <button onClick={() => setShowInstallBanner(false)} className="text-emerald-700 hover:text-emerald-900 font-bold px-2" aria-label="Tutup">×</button>
+        </div>
+      )}
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <div className="rounded-2xl p-4 bg-white shadow-md border border-emerald-100"><div className="text-xs font-semibold text-emerald-400">Okupansi</div><div className="text-2xl font-extrabold text-emerald-800">{okupansi.terisi} dari {okupansi.total} <span className="text-base font-bold text-emerald-500">({okupansi.pct}%)</span></div></div>
