@@ -26,15 +26,24 @@ export function unduhKwitansi(tagihan, profil) {
   doc.setLineWidth(0.5)
   doc.line(10, 32, w - 10, 32)
 
+  const denda = tagihan.denda || 0
+  const totalBayar = (tagihan.jumlah || 0) + denda
   const rows = [
     ['Nama Penghuni', tagihan.sewa?.penghuni?.nama || '-'],
     ['Nomor Kamar', tagihan.sewa?.kamar?.nomor || '-'],
     ['Periode Sewa', formatPeriode(tagihan.periode || '') || '-'],
-    ['Jumlah', formatRupiah(tagihan.jumlah || 0)],
-    ['Jumlah Terbilang', terbilang(tagihan.jumlah || 0)],
+  ]
+  if (denda > 0) {
+    rows.push(['Tagihan', formatRupiah(tagihan.jumlah || 0)])
+    rows.push(['Denda', formatRupiah(denda)])
+  } else {
+    rows.push(['Jumlah', formatRupiah(tagihan.jumlah || 0)])
+  }
+  rows.push(
+    ['Jumlah Terbilang', terbilang(totalBayar)],
     ['Tanggal Bayar', tagihan.tanggal_bayar ? formatTanggal(tagihan.tanggal_bayar) : '-'],
     ['Metode Bayar', tagihan.metode ? tagihan.metode.charAt(0).toUpperCase() + tagihan.metode.slice(1) : '-'],
-  ]
+  )
 
   let y = 36
   rows.forEach(([label, val]) => {

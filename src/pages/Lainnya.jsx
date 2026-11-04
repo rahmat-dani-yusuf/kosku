@@ -5,6 +5,7 @@ export default function Lainnya() {
     { to: '/penghuni', label: 'Penghuni', desc: 'Kelola data penghuni kos' },
     { to: '/sewa', label: 'Sewa', desc: 'Kelola kontrak sewa' },
     { to: '/laporan', label: 'Laporan', desc: 'Lihat ringkasan keuangan' },
+    { to: '/pengaturan', label: 'Pengaturan', desc: 'Aturan kos, denda, dan nilai bawaan' },
     { to: '/profil', label: 'Profil', desc: 'Data pemilik dan pengaturan' },
   ]
   return (

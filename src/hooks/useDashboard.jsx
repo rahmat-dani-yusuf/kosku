@@ -43,7 +43,7 @@ export function useDashboard() {
   const ringkasanPendapatan = useMemo(() => {
     const bulanIni = new Date().toISOString().slice(0, 7)
     const lunasBulan = tagihan.filter(t => t.status === 'lunas' && (t.tanggal_bayar || '').startsWith(bulanIni))
-    return lunasBulan.reduce((s, t) => s + (t.jumlah || 0), 0)
+    return lunasBulan.reduce((s, t) => s + ((t.jumlah || 0) + (t.denda || 0)), 0)
   }, [tagihan])
 
   const tunggakan = useMemo(() => {
@@ -71,7 +71,7 @@ export function useDashboard() {
       months.push({ label: d.toLocaleString('id-ID', { month: 'short' }), periode: `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}` })
     }
     const data = months.map(m => {
-      const sum = tagihan.filter(t => t.status === 'lunas' && (t.tanggal_bayar || '').startsWith(m.periode)).reduce((s, t) => s + (t.jumlah || 0), 0)
+      const sum = tagihan.filter(t => t.status === 'lunas' && (t.tanggal_bayar || '').startsWith(m.periode)).reduce((s, t) => s + ((t.jumlah || 0) + (t.denda || 0)), 0)
       return { label: m.label, value: sum }
     })
     return data

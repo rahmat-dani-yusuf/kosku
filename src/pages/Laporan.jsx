@@ -93,6 +93,7 @@ export default function Laporan() {
               <th className="px-4 py-3 font-bold">Status</th>
               <th className="px-4 py-3 font-bold">Tanggal Bayar</th>
               <th className="px-4 py-3 font-bold">Metode</th>
+              <th className="px-4 py-3 font-bold">Denda</th>
             </tr>
           </thead>
           <tbody>
@@ -109,6 +110,7 @@ export default function Laporan() {
                 </td>
                 <td className="px-4 py-3 text-emerald-600">{i.tanggal_bayar ? formatTanggal(i.tanggal_bayar) : '-'}</td>
                 <td className="px-4 py-3 text-emerald-600">{i.metode ? i.metode.charAt(0).toUpperCase() + i.metode.slice(1) : '-'}</td>
+                <td className="px-4 py-3 font-bold text-amber-700">{formatRupiah(i.denda || 0)}</td>
               </tr>
             ))}
           </tbody>

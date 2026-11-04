@@ -1,6 +1,8 @@
 import { useState, useEffect, useMemo } from 'react'
 import { useAuth } from '../hooks/useAuth.jsx'
 import { usePenghuni } from '../hooks/usePenghuni.jsx'
+import { usePengaturan } from '../hooks/usePengaturan.jsx'
+import { useProfil } from '../hooks/useProfil.jsx'
 import { normalisasiNomor, buatLinkWA } from '../lib/whatsapp.js'
 import { supabase } from '../lib/supabaseClient.js'
 import Modal from '../components/Modal.jsx'
@@ -18,6 +20,8 @@ function validateNoHP(str) {
 export default function Penghuni() {
   const { user } = useAuth()
   const { data: list, loading, error, reload, tambah, ubah, hapus } = usePenghuni()
+  const { pengaturan } = usePengaturan()
+  const profil = useProfil()
   const [search, setSearch] = useState('')
   const [modalOpen, setModalOpen] = useState(false)
   const [confirmOpen, setConfirmOpen] = useState(false)
@@ -118,6 +122,13 @@ export default function Penghuni() {
               <div className="flex items-center gap-2 shrink-0">
                 <a href={buatLinkWA(p.no_hp, `Halo ${p.nama}`)} target="_blank" rel="noopener noreferrer" className="px-3 py-2 rounded-xl bg-emerald-600 text-white text-xs font-bold hover:bg-emerald-700 transition">Chat WA</a>
                 <button onClick={() => openEdit(p)} className="px-3 py-2 rounded-xl bg-emerald-50 text-emerald-700 text-xs font-bold hover:bg-emerald-100 transition">Ubah</button>
+                {activeSewa[p.id] && (
+                  pengaturan.aturan_kos ? (
+                    <a href={buatLinkWA(p.no_hp, `Halo ${p.nama}, berikut aturan kos ${profil?.nama_kos || 'kami'}:\n${pengaturan.aturan_kos || ''}`)} target="_blank" rel="noopener noreferrer" className="px-3 py-2 rounded-xl bg-blue-50 text-blue-700 text-xs font-bold hover:bg-blue-100 transition">Aturan WA</a>
+                  ) : (
+                    <span className="px-3 py-2 rounded-xl bg-gray-100 text-gray-400 text-xs font-bold" title="Aturan kos belum diisi">Aturan WA</span>
+                  )
+                )}
                 <button onClick={() => openDelete(p)} className="px-3 py-2 rounded-xl bg-red-50 text-red-600 text-xs font-bold hover:bg-red-100 transition">Hapus</button>
               </div>
             </div>

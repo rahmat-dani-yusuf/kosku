@@ -4,6 +4,7 @@ import { useProfil } from '../hooks/useProfil.jsx'
 import { normalisasiNomor } from '../lib/whatsapp.js'
 import { supabase } from '../lib/supabaseClient.js'
 import { useToast } from '../components/Toast.jsx'
+import { Link } from 'react-router-dom'
 import TombolPasang from '../components/TombolPasang.jsx'
 import ConfirmDialog from '../components/ConfirmDialog.jsx'
 
@@ -71,6 +72,7 @@ export default function Profil() {
     <div className="bg-white/80 backdrop-blur rounded-3xl shadow-xl border border-emerald-100 p-8 md:p-10">
       <h1 className="text-2xl font-extrabold text-emerald-800 mb-6">Profil</h1>
       <div className="mb-6"><TombolPasang /></div>
+      <div className="mb-6"><Link to="/pengaturan" className="text-emerald-700 font-semibold underline">Pengaturan Kos</Link></div>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
         <div>
           <label className="block text-xs font-bold text-emerald-700 uppercase tracking-wider mb-1">Nama Pemilik</label>

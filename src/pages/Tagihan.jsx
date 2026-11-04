@@ -1,6 +1,8 @@
 import { useState, useMemo } from 'react'
 import { useAuth } from '../hooks/useAuth.jsx'
 import { useTagihan } from '../hooks/useTagihan.jsx'
+import { usePengaturan } from '../hooks/usePengaturan.jsx'
+import { hitungDenda } from '../lib/denda.js'
 import { formatRupiah, formatTanggal } from '../lib/format.js'
 import { buatPesanTagihan, buatLinkWA, normalisasiNomor } from '../lib/whatsapp.js'
 import { unduhKwitansi } from '../lib/kwitansi.js'
@@ -15,10 +17,12 @@ export default function Tagihan() {
   const profil = useProfil()
   const { show } = useToast()
   const { list, filteredList, loading, error, periode, setPeriode, statusFilter, setStatusFilter, reload, buatTagihan, tandaiLunas, batalkanLunas, ringkasan } = useTagihan()
+  const { pengaturan } = usePengaturan()
   const [openMark, setOpenMark] = useState(false)
   const [markId, setMarkId] = useState(null)
   const [tglBayar, setTglBayar] = useState(new Date().toISOString().split('T')[0])
   const [metode, setMetode] = useState('tunai')
+  const [dendaMark, setDendaMark] = useState(0)
   const [openCancel, setOpenCancel] = useState(false)
   const [cancelId, setCancelId] = useState(null)
 
@@ -38,7 +42,7 @@ export default function Tagihan() {
     if (!tglBayar) return alert('Pilih tanggal bayar')
     if (tglBayar > new Date().toISOString().split('T')[0]) return alert('Tanggal bayar tidak boleh di masa depan')
     if (!markId) return
-    await tandaiLunas(markId, tglBayar, metode)
+    await tandaiLunas(markId, tglBayar, metode, dendaMark)
     setOpenMark(false)
   }
 
@@ -107,9 +111,22 @@ export default function Tagihan() {
             <div className="text-xs text-emerald-400 mb-2">Periode: {i.periode}</div>
             <div className="text-xl font-extrabold text-emerald-800 mb-1">{formatRupiah(i.jumlah || 0)}</div>
             <div className="text-sm text-emerald-500 mb-3">Jatuh tempo: {formatTanggal(i.jatuh_tempo)}</div>
+            {i.status === 'belum' && (i.jatuh_tempo || '') < new Date().toISOString().split('T')[0] && (() => {
+              const { denda, hariTelat } = hitungDenda(i, pengaturan, new Date().toISOString().split('T')[0])
+              if (denda > 0) return <div className="text-xs font-bold text-red-600 mb-2">Denda: {formatRupiah(denda)} ({hariTelat} hari)</div>
+              return null
+            })()}
             <div className="flex gap-2">
               {i.status === 'belum' && (
-                <button onClick={() => { setMarkId(i.id); setTglBayar(new Date().toISOString().split('T')[0]); setMetode('tunai'); setOpenMark(true) }} className="flex-1 py-2 rounded-xl bg-emerald-600 text-white text-sm font-bold hover:bg-emerald-700 transition">Tandai Lunas</button>
+                <button onClick={() => {
+                  const item = list.find(x => x.id === i.id)
+                  setMarkId(i.id)
+                  setTglBayar(new Date().toISOString().split('T')[0])
+                  setMetode('tunai')
+                  const { denda } = hitungDenda(item, pengaturan, new Date().toISOString().split('T')[0])
+                  setDendaMark(denda)
+                  setOpenMark(true)
+                }} className="flex-1 py-2 rounded-xl bg-emerald-600 text-white text-sm font-bold hover:bg-emerald-700 transition">Tandai Lunas</button>
               )}
               {i.status === 'lunas' && (
                 <button onClick={() => { setCancelId(i.id); setOpenCancel(true) }} className="flex-1 py-2 rounded-xl bg-amber-50 text-amber-700 text-sm font-bold hover:bg-amber-100 transition">Batalkan Lunas</button>
@@ -119,7 +136,8 @@ export default function Tagihan() {
                   const nomor = i.sewa?.penghuni?.no_hp || ''
                   if (!normalisasiNomor(nomor)) return show('Nomor HP tidak valid', 'error')
                   const terlambat = i.status === 'belum' && (i.jatuh_tempo || '') < new Date().toISOString().split('T')[0]
-                  const msg = buatPesanTagihan({ nama: i.sewa?.penghuni?.nama || '-', nama_kos: profil?.nama_kos || 'kos kami', nomor_kamar: i.sewa?.kamar?.nomor || '-', periode: i.periode || '', jumlah: i.jumlah || 0, jatuh_tempo: i.jatuh_tempo || '', terlambat })
+                  const { denda, hariTelat } = terlambat ? hitungDenda(i, pengaturan, new Date().toISOString().split('T')[0]) : { denda: 0, hariTelat: 0 }
+                  const msg = buatPesanTagihan({ nama: i.sewa?.penghuni?.nama || '-', nama_kos: profil?.nama_kos || 'kos kami', nomor_kamar: i.sewa?.kamar?.nomor || '-', periode: i.periode || '', jumlah: i.jumlah || 0, jatuh_tempo: i.jatuh_tempo || '', terlambat, denda, hariTelat })
                   window.open(buatLinkWA(nomor, msg), '_blank', 'noopener')
                 }} className="px-3 py-2 rounded-xl bg-emerald-50 text-emerald-700 text-xs font-bold hover:bg-emerald-100 transition">Ingatkan WA</button>
               )}
@@ -144,6 +162,10 @@ export default function Tagihan() {
               <option value="transfer">Transfer</option>
               <option value="lainnya">Lainnya</option>
             </select>
+          </div>
+          <div>
+            <label className="block text-xs font-bold text-emerald-700 uppercase tracking-wider mb-1">Denda (Bisa diubah)</label>
+            <input type="number" min={0} value={dendaMark} onChange={e => setDendaMark(parseInt(e.target.value || 0))} className="w-full px-4 py-3 rounded-xl bg-emerald-50/60 border border-emerald-100 focus:outline-none focus:ring-2 focus:ring-emerald-400" />
           </div>
           <button onClick={handleMark} className="w-full py-3 rounded-xl bg-emerald-600 text-white font-bold shadow-lg shadow-emerald-200 hover:bg-emerald-700 transition">Simpan</button>
         </div>

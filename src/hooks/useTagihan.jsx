@@ -62,9 +62,9 @@ export function useTagihan() {
     }
   }, [periode, reload, show])
 
-  const tandaiLunas = useCallback(async (id, tanggalBayar, metode) => {
+  const tandaiLunas = useCallback(async (id, tanggalBayar, metode, denda = 0) => {
     try {
-      const { error: err } = await supabase.from('tagihan').update({ status: 'lunas', tanggal_bayar: tanggalBayar, metode }).eq('id', id).eq('user_id', user.id)
+      const { error: err } = await supabase.from('tagihan').update({ status: 'lunas', tanggal_bayar: tanggalBayar, metode, denda: Number(denda) || 0 }).eq('id', id).eq('user_id', user.id)
       if (err) throw err
       await reload()
       show('Tagihan ditandai lunas', 'success')
@@ -77,7 +77,7 @@ export function useTagihan() {
 
   const batalkanLunas = useCallback(async (id) => {
     try {
-      const { error: err } = await supabase.from('tagihan').update({ status: 'belum', tanggal_bayar: null, metode: null }).eq('id', id).eq('user_id', user.id)
+      const { error: err } = await supabase.from('tagihan').update({ status: 'belum', tanggal_bayar: null, metode: null, denda: 0 }).eq('id', id).eq('user_id', user.id)
       if (err) throw err
       await reload()
       show('Tagihan dibatalkan', 'success')
@@ -94,7 +94,7 @@ export function useTagihan() {
     const belum = list.filter(i => i.status === 'belum')
     const todayStr = new Date().toISOString().split('T')[0]
     const terlambat = list.filter(i => i.status === 'belum' && (i.jatuh_tempo || '') < todayStr)
-    const nominalLunas = lunas.reduce((s, i) => s + (i.jumlah || 0), 0)
+    const nominalLunas = lunas.reduce((s, i) => s + ((i.jumlah || 0) + (i.denda || 0)), 0)
     const nominalBelum = belum.reduce((s, i) => s + (i.jumlah || 0), 0)
     return { total, lunas: lunas.length, nominalLunas, belum: belum.length, nominalBelum, terlambat: terlambat.length }
   }, [list])

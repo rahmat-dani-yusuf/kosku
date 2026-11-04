@@ -67,7 +67,7 @@ export function useLaporan() {
     const belum = tagihan.filter(t => t.status === 'belum')
     const terlambat = belum.filter(t => (t.jatuh_tempo || '') < new Date().toISOString().split('T')[0])
     return {
-      total, lunas: lunas.length, totalLunas: lunas.reduce((s,t)=>s+(t.jumlah||0),0),
+      total, lunas: lunas.length,       totalLunas: lunas.reduce((s,t)=>s+((t.jumlah||0)+(t.denda||0)),0),
       belum: belum.length, totalBelum: belum.reduce((s,t)=>s+(t.jumlah||0),0),
       terlambat: terlambat.length, totalTerlambat: terlambat.reduce((s,t)=>s+(t.jumlah||0),0),
       persenBayar: total ? Math.round((lunas.length / total) * 100) : 0,

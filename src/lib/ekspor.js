@@ -43,11 +43,12 @@ export function unduhLaporanPdf({ periode, tagihan, kamar, profil, ringkasan }) 
   doc.text('Rincian Tagihan', 14, (doc.lastAutoTable?.finalY || 70) + 6)
   autoTable(doc, {
     startY: (doc.lastAutoTable?.finalY || 70) + 8,
-    head: [['Kamar', 'Penghuni', 'Jumlah', 'Jatuh Tempo', 'Status', 'Tanggal Bayar', 'Metode']],
+    head: [['Kamar', 'Penghuni', 'Jumlah', 'Denda', 'Jatuh Tempo', 'Status', 'Tanggal Bayar', 'Metode']],
     body: (tagihan || []).map(t => [
       t.sewa?.kamar?.nomor || '-',
       t.sewa?.penghuni?.nama || '-',
       formatRupiah(t.jumlah || 0),
+      formatRupiah(t.denda || 0),
       formatTanggal(t.jatuh_tempo) || '-',
       t.status === 'lunas' ? 'Lunas' : t.status === 'belum' && (t.jatuh_tempo || '') < new Date().toISOString().split('T')[0] ? 'Terlambat' : 'Belum bayar',
       t.tanggal_bayar ? formatTanggal(t.tanggal_bayar) : '-',
@@ -104,22 +105,25 @@ export function unduhLaporanExcel({ periode, tagihan, kamar, penghuni, profil })
 
   // Tagihan
   const tagihanData = [[
-    'Kamar', 'Penghuni', 'Jumlah', 'Jatuh Tempo', 'Status', 'Tanggal Bayar', 'Metode'
+    'Kamar', 'Penghuni', 'Jumlah', 'Denda', 'Jatuh Tempo', 'Status', 'Tanggal Bayar', 'Metode'
   ], ...tagihan.map(t => [
     t.sewa?.kamar?.nomor || '-',
     t.sewa?.penghuni?.nama || '-',
     t.jumlah || 0,
+    t.denda || 0,
     t.jatuh_tempo || '-',
     t.status === 'lunas' ? 'Lunas' : t.status === 'belum' && (t.jatuh_tempo || '') < new Date().toISOString().split('T')[0] ? 'Terlambat' : 'Belum bayar',
     t.tanggal_bayar || '-',
     t.metode ? t.metode.charAt(0).toUpperCase() + t.metode.slice(1) : '-',
   ])]
   const wsTagihan = XLSX.utils.aoa_to_sheet(tagihanData)
-  wsTagihan['!cols'] = [{ wch: 10 }, { wch: 20 }, { wch: 15 }, { wch: 15 }, { wch: 15 }, { wch: 15 }, { wch: 12 }]
+  wsTagihan['!cols'] = [{ wch: 10 }, { wch: 20 }, { wch: 15 }, { wch: 15 }, { wch: 15 }, { wch: 15 }, { wch: 15 }, { wch: 12 }]
   // Make jumlah column number format
   for (let i = 2; i < tagihanData.length; i++) {
-    const cell = wsTagihan[`C${i}`]
-    if (cell) cell.z = '#,##0'
+    const c = wsTagihan[`C${i}`]
+    if (c) c.z = '#,##0'
+    const d = wsTagihan[`D${i}`]
+    if (d) d.z = '#,##0'
   }
   XLSX.utils.book_append_sheet(wb, wsTagihan, 'Tagihan')
 

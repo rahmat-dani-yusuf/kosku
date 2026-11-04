@@ -3,6 +3,7 @@ import { useAuth } from '../hooks/useAuth.jsx'
 import { useSewa } from '../hooks/useSewa.jsx'
 import { formatRupiah, parseRupiah, formatTanggal } from '../lib/format.js'
 import { supabase } from '../lib/supabaseClient.js'
+import { usePengaturan } from '../hooks/usePengaturan.jsx'
 import Modal from '../components/Modal.jsx'
 import ConfirmDialog from '../components/ConfirmDialog.jsx'
 import EmptyState from '../components/EmptyState.jsx'
@@ -27,6 +28,7 @@ export default function Sewa() {
   const [selectedKamar, setSelectedKamar] = useState('')
   const [selectedPenghuni, setSelectedPenghuni] = useState('')
   const [tanggalMasuk, setTanggalMasuk] = useState(todayStr())
+  const { pengaturan } = usePengaturan()
   const [hariTagih, setHariTagih] = useState(new Date().getDate())
   const [hargaSewa, setHargaSewa] = useState('')
   const [deposit, setDeposit] = useState('0')
@@ -80,6 +82,13 @@ export default function Sewa() {
     await akhiriSewa(endId, endDate)
     setOpenEnd(false)
   }
+
+  useEffect(() => {
+    if (openStart) {
+      setHariTagih(Math.max(1, Math.min(28, pengaturan.hari_tagih_default || new Date().getDate())))
+      setDeposit(Number(pengaturan.deposit_default || 0).toLocaleString('id-ID', { maximumFractionDigits: 0 }))
+    }
+  }, [openStart, pengaturan])
 
   // Auto-fill price when kamar selected
   useEffect(() => {

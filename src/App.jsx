@@ -12,6 +12,7 @@ import Tagihan from './pages/Tagihan.jsx'
 import Laporan from './pages/Laporan.jsx'
 import Profil from './pages/Profil.jsx'
 import Lainnya from './pages/Lainnya.jsx'
+import Pengaturan from './pages/Pengaturan.jsx'
 
 function App() {
   return (
@@ -28,6 +29,7 @@ function App() {
             <Route path="/tagihan" element={<Tagihan />} />
             <Route path="/laporan" element={<Laporan />} />
             <Route path="/profil" element={<Profil />} />
+            <Route path="/pengaturan" element={<Pengaturan />} />
             <Route path="/lainnya" element={<Lainnya />} />
           </Route>
           <Route path="*" element={<Navigate to="/" replace />} />

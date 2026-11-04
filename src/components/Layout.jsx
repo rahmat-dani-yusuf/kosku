@@ -10,6 +10,7 @@ const navItems = [
   { to: '/sewa', label: 'Sewa', mobile: false },
   { to: '/tagihan', label: 'Tagihan', mobile: true },
   { to: '/laporan', label: 'Laporan', mobile: false },
+  { to: '/pengaturan', label: 'Pengaturan', mobile: false },
   { to: '/profil', label: 'Profil', mobile: false },
 ]
 
