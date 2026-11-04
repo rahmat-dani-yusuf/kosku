@@ -88,7 +88,7 @@ export default function Profil() {
         </div>
         <div>
           <label className="block text-xs font-bold text-emerald-700 uppercase tracking-wider mb-1">Nomor WhatsApp</label>
-          <input value={noWa} onChange={e => setNoWa(e.target.value)} className="w-full px-4 py-3 rounded-xl bg-emerald-50/60 border border-emerald-100 focus:outline-none focus:ring-2 focus:ring-emerald-400" placeholder="0812..." />
+          <input value={noWa} autoComplete="off" onChange={e => setNoWa(e.target.value)} className="w-full px-4 py-3 rounded-xl bg-emerald-50/60 border border-emerald-100 focus:outline-none focus:ring-2 focus:ring-emerald-400" placeholder="0812..." />
         </div>
         <div>
           <label className="block text-xs font-bold text-emerald-700 uppercase tracking-wider mb-1">Email Akun</label>
@@ -104,11 +104,11 @@ export default function Profil() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
           <div>
             <label className="block text-xs font-bold text-emerald-700 uppercase tracking-wider mb-1">Kata Sandi Baru</label>
-            <input type="password" value={pwBaru} onChange={e => setPwBaru(e.target.value)} className="w-full px-4 py-3 rounded-xl bg-emerald-50/60 border border-emerald-100 focus:outline-none focus:ring-2 focus:ring-emerald-400" />
+            <input type="password" autoComplete="new-password" value={pwBaru} onChange={e => setPwBaru(e.target.value)} className="w-full px-4 py-3 rounded-xl bg-emerald-50/60 border border-emerald-100 focus:outline-none focus:ring-2 focus:ring-emerald-400" />
           </div>
           <div>
             <label className="block text-xs font-bold text-emerald-700 uppercase tracking-wider mb-1">Konfirmasi</label>
-            <input type="password" value={pwKonf} onChange={e => setPwKonf(e.target.value)} className="w-full px-4 py-3 rounded-xl bg-emerald-50/60 border border-emerald-100 focus:outline-none focus:ring-2 focus:ring-emerald-400" />
+            <input type="password" autoComplete="new-password" value={pwKonf} onChange={e => setPwKonf(e.target.value)} className="w-full px-4 py-3 rounded-xl bg-emerald-50/60 border border-emerald-100 focus:outline-none focus:ring-2 focus:ring-emerald-400" />
           </div>
         </div>
         <button onClick={handlePassword} className="w-full py-3 rounded-xl bg-emerald-600 text-white font-bold shadow-lg shadow-emerald-200 hover:bg-emerald-700 transition">Ubah Kata Sandi</button>

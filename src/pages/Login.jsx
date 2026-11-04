@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Link, Navigate } from 'react-router-dom'
+import { useProfil } from '../hooks/useProfil.jsx'
 import { useAuth } from '../hooks/useAuth.jsx'
 
 function translateError(err) {
@@ -19,7 +20,11 @@ export default function Login() {
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
 
-  if (user) return <Navigate to="/" replace />
+  const { profil, loading: profilLoading } = useProfil()
+  if (user && !profilLoading) {
+    if (profil?.role === 'admin' && profil?.aktif !== false) return <Navigate to="/admin" replace />
+    return <Navigate to="/" replace />
+  }
 
   const handleSubmit = async (e) => {
     e.preventDefault()
