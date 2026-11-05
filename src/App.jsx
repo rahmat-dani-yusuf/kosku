@@ -32,9 +32,9 @@ function App() {
             <Route path="/laporan" element={<Laporan />} />
             <Route path="/profil" element={<Profil />} />
             <Route path="/pengaturan" element={<Pengaturan />} />
-            <Route path="/admin" element={<AdminRoute><Admin /></AdminRoute>} />
             <Route path="/lainnya" element={<Lainnya />} />
           </Route>
+          <Route path="/admin" element={<AdminRoute><Admin /></AdminRoute>} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </BrowserRouter>
