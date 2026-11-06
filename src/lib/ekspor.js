@@ -162,3 +162,47 @@ export function unduhLaporanExcel({ periode, tagihan, kamar, penghuni, profil })
 
   XLSX.writeFile(wb, `laporan-kosku-${new Date(periode).getFullYear()}-${String(new Date(periode).getMonth() + 1).padStart(2, '0')}.xlsx`)
 }
+
+function tanggalLokal(input) {
+  if (!input) return '-'
+  const teks = String(input)
+  if (/^\d{4}-\d{2}-\d{2}$/.test(teks)) return teks
+  const d = new Date(teks)
+  if (isNaN(d.getTime())) return teks
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
+
+export function unduhDaftarKos(daftar) {
+  const baris = [[
+    'Nama Kos', 'Nama Pemilik', 'Email', 'Alamat', 'Jumlah Kamar', 'Kamar Terisi', 'Sewa Aktif', 'Status', 'Tanggal Daftar'
+  ], ...(daftar || []).map(k => [
+    k.nama_kos || '-',
+    k.nama_pemilik || '-',
+    k.email || '-',
+    k.alamat || '-',
+    Number(k.jumlah_kamar) || 0,
+    Number(k.kamar_terisi) || 0,
+    Number(k.sewa_aktif) || 0,
+    k.aktif ? 'Aktif' : 'Nonaktif',
+    tanggalLokal(k.terdaftar),
+  ])]
+
+  const ws = XLSX.utils.aoa_to_sheet(baris)
+  ws['!cols'] = [
+    { wch: 24 }, { wch: 22 }, { wch: 30 }, { wch: 36 },
+    { wch: 14 }, { wch: 14 }, { wch: 12 }, { wch: 12 }, { wch: 16 },
+  ]
+  for (let i = 1; i < baris.length; i++) {
+    for (const col of ['E', 'F', 'G']) {
+      const cell = ws[`${col}${i + 1}`]
+      if (cell && cell.t === 'n') cell.z = '#,##0'
+    }
+  }
+
+  const wb = XLSX.utils.book_new()
+  XLSX.utils.book_append_sheet(wb, ws, 'Daftar Kos')
+
+  const now = new Date()
+  const tanggal = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
+  XLSX.writeFile(wb, `daftar-kos-${tanggal}.xlsx`)
+}

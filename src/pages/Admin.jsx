@@ -3,17 +3,23 @@ import { useAuth } from '../hooks/useAuth.jsx'
 import { useProfil } from '../hooks/useProfil.jsx'
 import { useAdmin } from '../hooks/useAdmin.js'
 import { formatTanggal } from '../lib/format.js'
+import { unduhDaftarKos } from '../lib/ekspor.js'
 import EmptyState from '../components/EmptyState.jsx'
+import ConfirmDialog from '../components/ConfirmDialog.jsx'
+import { useToast } from '../components/Toast.jsx'
 
 export default function Admin() {
   useEffect(() => { document.title = 'Super Admin - KosKu' }, [])
   const { signOut } = useAuth()
   const { profil, loading: profilLoading } = useProfil()
-  const { statistik, daftarKos, loading, error, reload } = useAdmin()
+  const { statistik, daftarKos, loading, error, reload, setAktif } = useAdmin()
+  const { show } = useToast()
 
   const [cari, setCari] = useState('')
   const [filterStatus, setFilterStatus] = useState('semua')
   const [urut, setUrut] = useState('terbaru')
+  const [konfirmasi, setKonfirmasi] = useState(null)
+  const [memproses, setMemproses] = useState(null)
 
   const okupansiTotal = statistik.total_kamar ? Math.round((statistik.kamar_terisi / statistik.total_kamar) * 100) : 0
 
@@ -37,6 +43,38 @@ export default function Admin() {
 
   const kosongSemua = !loading && daftarKos.length === 0
   const kosongFilter = !loading && daftarKos.length > 0 && hasil.length === 0
+
+  const mintaKonfirmasi = (k, aksi) => {
+    if (memproses) return
+    setKonfirmasi({ user_id: k.user_id, nama: k.nama_kos || k.nama_pemilik || 'akun ini', aksi })
+  }
+
+  const jalankanAksi = async () => {
+    if (!konfirmasi || memproses) return
+    const { user_id, nama, aksi } = konfirmasi
+    setMemproses(user_id)
+    try {
+      await setAktif(user_id, aksi === 'aktif')
+      setKonfirmasi(null)
+      show(aksi === 'aktif'
+        ? `Akun ${nama} berhasil diaktifkan`
+        : `Akun ${nama} berhasil dinonaktifkan`, 'success')
+    } catch (e) {
+      show(e.message || 'Gagal mengubah status akun', 'error')
+    } finally {
+      setMemproses(null)
+    }
+  }
+
+  const handleUnduhExcel = () => {
+    if (!hasil.length) return
+    try {
+      unduhDaftarKos(hasil)
+      show('Excel berhasil diunduh', 'success')
+    } catch (e) {
+      show(e.message || 'Gagal membuat Excel', 'error')
+    }
+  }
 
   const Badge = ({ aktif }) => (
     <span className={`text-xs font-bold px-2.5 py-0.5 rounded-full border whitespace-nowrap ${aktif ? 'bg-emerald-100 text-emerald-700 border-emerald-200' : 'bg-red-100 text-red-700 border-red-200'}`}>
@@ -107,6 +145,7 @@ export default function Admin() {
               <option value="nama">Nama kos</option>
               <option value="kamar">Kamar terbanyak</option>
             </select>
+            <button onClick={handleUnduhExcel} disabled={loading || hasil.length === 0} className="px-3 py-2.5 rounded-xl bg-blue-600 text-white text-sm font-bold whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed hover:bg-blue-700 transition">Unduh Excel</button>
           </div>
         </div>
 
@@ -141,6 +180,7 @@ export default function Admin() {
                     <th className="px-4 py-3 font-bold">Sewa Aktif</th>
                     <th className="px-4 py-3 font-bold">Terdaftar</th>
                     <th className="px-4 py-3 font-bold">Status</th>
+                    <th className="px-4 py-3 font-bold">Aksi</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -155,6 +195,17 @@ export default function Admin() {
                       <td className="px-4 py-3 text-emerald-700">{k.sewa_aktif || 0}</td>
                       <td className="px-4 py-3 text-emerald-600 whitespace-nowrap">{formatTanggal(k.terdaftar)}</td>
                       <td className="px-4 py-3"><Badge aktif={k.aktif} /></td>
+                      <td className="px-4 py-3">
+                        <button
+                          type="button"
+                          onClick={() => mintaKonfirmasi(k, k.aktif ? 'nonaktif' : 'aktif')}
+                          disabled={memproses !== null}
+                          className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold border transition disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap ${k.aktif ? 'border-red-200 text-red-600 bg-red-50 hover:bg-red-100' : 'border-emerald-600 text-white bg-emerald-600 hover:bg-emerald-700'}`}
+                        >
+                          {memproses === k.user_id && <span className="h-3 w-3 border-2 border-current border-t-transparent rounded-full animate-spin" />}
+                          {memproses === k.user_id ? 'Memproses...' : (k.aktif ? 'Nonaktifkan' : 'Aktifkan')}
+                        </button>
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -187,6 +238,15 @@ export default function Admin() {
                     </div>
                   </div>
                   <div className="text-xs text-emerald-500 mt-2">Terdaftar: {formatTanggal(k.terdaftar)}</div>
+                  <button
+                    type="button"
+                    onClick={() => mintaKonfirmasi(k, k.aktif ? 'nonaktif' : 'aktif')}
+                    disabled={memproses !== null}
+                    className={`mt-3 w-full inline-flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl text-sm font-bold border transition disabled:opacity-50 disabled:cursor-not-allowed ${k.aktif ? 'border-red-200 text-red-600 bg-red-50 hover:bg-red-100' : 'border-emerald-600 text-white bg-emerald-600 hover:bg-emerald-700'}`}
+                  >
+                    {memproses === k.user_id && <span className="h-3.5 w-3.5 border-2 border-current border-t-transparent rounded-full animate-spin" />}
+                    {memproses === k.user_id ? 'Memproses...' : (k.aktif ? 'Nonaktifkan' : 'Aktifkan')}
+                  </button>
                 </div>
               ))}
             </div>
@@ -196,6 +256,19 @@ export default function Admin() {
         <p className="text-xs text-emerald-500 bg-emerald-50 border border-emerald-100 rounded-xl px-3 py-2">
           Admin hanya melihat data ringkasan. Data penghuni tidak ditampilkan demi privasi.
         </p>
+
+        <ConfirmDialog
+          open={!!konfirmasi}
+          busy={!!memproses}
+          title={konfirmasi?.aksi === 'aktif' ? 'Aktifkan Akun' : 'Nonaktifkan Akun'}
+          message={konfirmasi?.aksi === 'aktif'
+            ? `Akun "${konfirmasi?.nama}" akan diaktifkan kembali. Pemilik bisa masuk ke aplikasi dan mengakses datanya seperti semula.`
+            : `Akun "${konfirmasi?.nama}" akan dinonaktifkan. Pemilik tidak bisa masuk ke aplikasi dan datanya tidak bisa diakses sampai akun diaktifkan kembali. Data tidak akan dihapus.`}
+          confirmLabel={konfirmasi?.aksi === 'aktif' ? 'Ya, Aktifkan' : 'Ya, Nonaktifkan'}
+          confirmClass={konfirmasi?.aksi === 'aktif' ? 'bg-emerald-600 hover:bg-emerald-700' : 'bg-red-500 hover:bg-red-600'}
+          onConfirm={jalankanAksi}
+          onCancel={() => { if (!memproses) setKonfirmasi(null) }}
+        />
       </main>
     </div>
   )
