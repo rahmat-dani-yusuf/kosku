@@ -15,6 +15,7 @@ import AdminRoute from './components/AdminRoute.jsx'
 import Admin from './pages/Admin.jsx'
 import Lainnya from './pages/Lainnya.jsx'
 import Pengaturan from './pages/Pengaturan.jsx'
+import PesanKamar from './pages/PesanKamar.jsx'
 
 function App() {
   return (
@@ -23,6 +24,7 @@ function App() {
         <Routes>
           <Route path="/login" element={<Login />} />
           <Route path="/daftar" element={<Daftar />} />
+          <Route path="/kos/:kosId" element={<PesanKamar />} />
           <Route element={<ProtectedRoute><Layout /></ProtectedRoute>}>
             <Route path="/" element={<Beranda />} />
             <Route path="/kamar" element={<Kamar />} />
