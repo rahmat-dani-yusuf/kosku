@@ -142,7 +142,7 @@ export default function Tagihan() {
                 }} className="px-3 py-2 rounded-xl bg-emerald-50 text-emerald-700 text-xs font-bold hover:bg-emerald-100 transition">Ingatkan WA</button>
               )}
               {i.status === 'lunas' && (
-                <button onClick={() => unduhKwitansi(i, profil)} className="px-3 py-2 rounded-xl bg-blue-50 text-blue-700 text-xs font-bold hover:bg-blue-100 transition">Kwitansi</button>
+                <button onClick={() => unduhKwitansi(i, profil).catch(e => show(e?.message || 'Gagal membuat kwitansi', 'error'))} className="px-3 py-2 rounded-xl bg-blue-50 text-blue-700 text-xs font-bold hover:bg-blue-100 transition">Kwitansi</button>
               )}
             </div>
           </div>

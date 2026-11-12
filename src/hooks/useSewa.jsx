@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '../lib/supabaseClient.js'
 import { useAuth } from './useAuth.jsx'
 import { useToast } from '../components/Toast.jsx'
+import { dengarDataBerubah } from '../lib/events.js'
 
 export function useSewa() {
   const { user } = useAuth()
@@ -32,6 +33,7 @@ export function useSewa() {
   }, [user])
 
   useEffect(() => { reload() }, [reload])
+  useEffect(() => dengarDataBerubah(reload), [reload])
 
   const mulaiSewa = async (params) => {
     try {

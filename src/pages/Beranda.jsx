@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth.jsx'
+import { usePemesanan } from '../hooks/usePemesanan.js'
 import { useProfil } from '../hooks/useProfil.jsx'
 import { useDashboard } from '../hooks/useDashboard.jsx'
 import { formatRupiah, formatTanggal } from '../lib/format.js'
@@ -15,6 +16,7 @@ export default function Beranda() {
   const profil = useProfil()
   const { show } = useToast()
   const { kamar, tagihan, sewaAktif, loading, error, okupansi, ringkasanPendapatan, tunggakan, jatuhTempo7, menunggak, grafikPendapatan } = useDashboard()
+  const { jumlahMenunggu } = usePemesanan()
   const [showInstallBanner, setShowInstallBanner] = useState(true)
   const [installAvailable, setInstallAvailable] = useState(false)
   const [installed, setInstalled] = useState(false)
@@ -68,6 +70,17 @@ export default function Beranda() {
         <div className="rounded-2xl p-4 bg-white shadow-md border border-emerald-100"><div className="text-xs font-semibold text-emerald-400">Pendapatan Bulan Ini</div><div className="text-2xl font-extrabold text-emerald-800">{formatRupiah(ringkasanPendapatan)}</div></div>
         <div className="rounded-2xl p-4 bg-red-50 shadow-md border border-red-100"><div className="text-xs font-semibold text-red-400">Tunggakan</div><div className="text-2xl font-extrabold text-red-800">{tunggakan.length}</div><div className="text-xs font-bold text-red-600">{tunggakan.length ? formatRupiah(tunggakan.reduce((s, t) => s + (t.jumlah || 0), 0)) : 'Rp 0'}</div></div>
       </div>
+
+      <Link
+        to="/pemesanan"
+        className={`flex items-center justify-between gap-3 rounded-2xl p-4 shadow-md border transition hover:shadow-lg ${jumlahMenunggu > 0 ? 'bg-amber-50 border-amber-200 hover:bg-amber-100' : 'bg-white border-emerald-100 hover:bg-emerald-50'}`}
+      >
+        <div>
+          <div className={`text-xs font-semibold ${jumlahMenunggu > 0 ? 'text-amber-500' : 'text-emerald-400'}`}>Pemesanan Menunggu</div>
+          <div className={`text-2xl font-extrabold ${jumlahMenunggu > 0 ? 'text-amber-800' : 'text-emerald-800'}`}>{jumlahMenunggu}</div>
+        </div>
+        <span className={`text-xs font-bold ${jumlahMenunggu > 0 ? 'text-amber-700' : 'text-emerald-600'}`}>Lihat &rarr;</span>
+      </Link>
 
       <div className="bg-white rounded-3xl shadow-xl border border-emerald-100 p-6">
         <h2 className="text-xl font-extrabold text-emerald-800 mb-4">Pendapatan 6 Bulan Terakhir</h2>

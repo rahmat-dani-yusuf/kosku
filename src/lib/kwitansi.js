@@ -1,7 +1,7 @@
-import { jsPDF } from 'jspdf'
 import { formatRupiah, terbilang, formatPeriode, formatTanggal } from './format.js'
 
-export function unduhKwitansi(tagihan, profil) {
+export async function unduhKwitansi(tagihan, profil) {
+  const { jsPDF } = await import('jspdf')
   const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a5' })
   const w = doc.internal.pageSize.getWidth()
   const h = doc.internal.pageSize.getHeight()

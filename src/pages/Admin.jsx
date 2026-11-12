@@ -66,10 +66,10 @@ export default function Admin() {
     }
   }
 
-  const handleUnduhExcel = () => {
+  const handleUnduhExcel = async () => {
     if (!hasil.length) return
     try {
-      unduhDaftarKos(hasil)
+      await unduhDaftarKos(hasil)
       show('Excel berhasil diunduh', 'success')
     } catch (e) {
       show(e.message || 'Gagal membuat Excel', 'error')

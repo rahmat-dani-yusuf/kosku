@@ -1,9 +1,10 @@
-import { jsPDF } from 'jspdf'
-import autoTable from 'jspdf-autotable'
-import * as XLSX from 'xlsx'
 import { formatRupiah, formatTanggal, formatPeriode } from './format.js'
 
-export function unduhLaporanPdf({ periode, tagihan, kamar, profil, ringkasan }) {
+export async function unduhLaporanPdf({ periode, tagihan, kamar, profil, ringkasan }) {
+  const [{ jsPDF }, { default: autoTable }] = await Promise.all([
+    import('jspdf'),
+    import('jspdf-autotable'),
+  ])
   const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' })
   const w = doc.internal.pageSize.getWidth()
 
@@ -82,7 +83,8 @@ export function unduhLaporanPdf({ periode, tagihan, kamar, profil, ringkasan }) 
   doc.save(`laporan-kosku-${new Date(periode).getFullYear()}-${String(new Date(periode).getMonth() + 1).padStart(2, '0')}.pdf`)
 }
 
-export function unduhLaporanExcel({ periode, tagihan, kamar, penghuni, profil }) {
+export async function unduhLaporanExcel({ periode, tagihan, kamar, penghuni, profil }) {
+  const XLSX = await import('xlsx')
   const wb = XLSX.utils.book_new()
 
   // Ringkasan
@@ -172,7 +174,8 @@ function tanggalLokal(input) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 }
 
-export function unduhDaftarKos(daftar) {
+export async function unduhDaftarKos(daftar) {
+  const XLSX = await import('xlsx')
   const baris = [[
     'Nama Kos', 'Nama Pemilik', 'Email', 'Alamat', 'Jumlah Kamar', 'Kamar Terisi', 'Sewa Aktif', 'Status', 'Tanggal Daftar'
   ], ...(daftar || []).map(k => [

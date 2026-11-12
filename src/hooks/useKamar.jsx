@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useAuth } from './useAuth.jsx'
 import { supabase } from '../lib/supabaseClient.js'
 import { useToast } from '../components/Toast.jsx'
+import { dengarDataBerubah } from '../lib/events.js'
 
 export function useKamar() {
   const { user } = useAuth()
@@ -30,6 +31,7 @@ export function useKamar() {
   }
 
   useEffect(() => { reload() }, [user]) // eslint-disable-line
+  useEffect(() => dengarDataBerubah(reload), [user]) // eslint-disable-line
 
   const tambah = async (payload) => {
     try {

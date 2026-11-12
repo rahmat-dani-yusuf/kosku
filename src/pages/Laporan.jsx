@@ -24,18 +24,18 @@ export default function Laporan() {
 
   const canDownload = tagihan.length > 0 || kamar.length > 0 || penghuni.length > 0
 
-  const handlePdf = () => {
+  const handlePdf = async () => {
     try {
-      unduhLaporanPdf({ periode, tagihan, kamar, profil, ringkasan })
+      await unduhLaporanPdf({ periode, tagihan, kamar, profil, ringkasan })
       show('PDF berhasil diunduh', 'success')
     } catch (e) {
       show(e.message || 'Gagal membuat PDF', 'error')
     }
   }
 
-  const handleXlsx = () => {
+  const handleXlsx = async () => {
     try {
-      unduhLaporanExcel({ periode, tagihan, kamar, penghuni, profil })
+      await unduhLaporanExcel({ periode, tagihan, kamar, penghuni, profil })
       show('Excel berhasil diunduh', 'success')
     } catch (e) {
       show(e.message || 'Gagal membuat Excel', 'error')

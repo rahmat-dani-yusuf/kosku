@@ -23,3 +23,20 @@ export function buatLinkWA(nomor, pesan) {
   if (!normalized) return ''
   return `https://wa.me/${normalized}?text=${encodeURIComponent(pesan || '')}`
 }
+
+export function buatLinkWAShare(pesan) {
+  return `https://wa.me/?text=${encodeURIComponent(pesan || '')}`
+}
+
+export function buatPesanPemesanan({ status, nama, nomor_kamar, nama_kos, tanggal, alasan }) {
+  const kos = nama_kos || 'kos kami'
+  const kamar = nomor_kamar || '-'
+  const tgl = formatTanggal(tanggal)
+  if (status === 'disetujui') {
+    return `Halo ${nama}, pemesanan kamar ${kamar} di ${kos} sudah kami setujui. Silakan masuk tanggal ${tgl}. Terima kasih.`
+  }
+  if (status === 'ditolak') {
+    return `Halo ${nama}, mohon maaf pemesanan kamar ${kamar} di ${kos} belum bisa kami terima.${alasan ? ' ' + alasan : ''}`
+  }
+  return `Halo ${nama}, terima kasih sudah mengajukan kamar ${kamar} di ${kos}. Kami ingin mengonfirmasi rencana masuk tanggal ${tgl}.`
+}

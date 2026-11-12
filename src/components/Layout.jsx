@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { NavLink, Outlet, useLocation } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth.jsx'
+import { usePemesanan } from '../hooks/usePemesanan.js'
 import { supabase } from '../lib/supabaseClient.js'
 
 const navItems = [
@@ -8,6 +9,7 @@ const navItems = [
   { to: '/kamar', label: 'Kamar', mobile: true },
   { to: '/penghuni', label: 'Penghuni', mobile: false },
   { to: '/sewa', label: 'Sewa', mobile: false },
+  { to: '/pemesanan', label: 'Pemesanan', mobile: false },
   { to: '/tagihan', label: 'Tagihan', mobile: true },
   { to: '/laporan', label: 'Laporan', mobile: false },
   { to: '/pengaturan', label: 'Pengaturan', mobile: false },
@@ -16,6 +18,7 @@ const navItems = [
 
 export default function Layout() {
   const { user } = useAuth()
+  const { jumlahMenunggu } = usePemesanan()
   const [kosName, setKosName] = useState('Kosku')
   const [mobileMenu, setMobileMenu] = useState(false)
   const [offline, setOffline] = useState(!navigator.onLine)
@@ -62,6 +65,9 @@ export default function Layout() {
             >
               <span className="w-1.5 h-1.5 rounded-full bg-current opacity-60" />
               {item.label}
+              {item.to === '/pemesanan' && jumlahMenunggu > 0 && (
+                <span className="ml-auto min-w-[1.5rem] px-1.5 py-0.5 rounded-full bg-red-500 text-white text-[10px] font-bold text-center">{jumlahMenunggu}</span>
+              )}
             </NavLink>
           ))}
         </nav>
@@ -89,10 +95,13 @@ export default function Layout() {
                   key={item.to}
                   to={item.to}
                   className={({ isActive }) =>
-                    `block px-4 py-3 rounded-xl text-sm font-semibold transition ${isActive ? 'bg-emerald-600 text-white' : 'text-emerald-700 hover:bg-emerald-50'}`
+                    `flex items-center justify-between px-4 py-3 rounded-xl text-sm font-semibold transition ${isActive ? 'bg-emerald-600 text-white' : 'text-emerald-700 hover:bg-emerald-50'}`
                   }
                 >
                   {item.label}
+                  {item.to === '/pemesanan' && jumlahMenunggu > 0 && (
+                    <span className="min-w-[1.5rem] px-1.5 py-0.5 rounded-full bg-red-500 text-white text-[10px] font-bold text-center">{jumlahMenunggu}</span>
+                  )}
                 </NavLink>
               ))}
             </div>
@@ -116,12 +125,15 @@ export default function Layout() {
             key={item.to}
             to={item.to}
             className={({ isActive }) =>
-              `flex flex-col items-center gap-0.5 px-3 py-1 rounded-xl text-[10px] font-bold transition ${
+              `relative flex flex-col items-center gap-0.5 px-3 py-1 rounded-xl text-[10px] font-bold transition ${
                 isActive ? 'text-emerald-700 bg-emerald-50' : 'text-emerald-400 hover:text-emerald-600'
               }`
             }
           >
             <span className="text-xl leading-none">{item.icon}</span>
+            {item.to === '/lainnya' && jumlahMenunggu > 0 && (
+              <span className="absolute top-0 right-1 min-w-[1.1rem] px-1 rounded-full bg-red-500 text-white text-[9px] font-bold leading-[1.1rem] text-center">{jumlahMenunggu}</span>
+            )}
             <span>{item.label}</span>
           </NavLink>
         ))}
