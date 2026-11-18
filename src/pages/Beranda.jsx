@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth.jsx'
 import { usePemesanan } from '../hooks/usePemesanan.js'
 import { useProfil } from '../hooks/useProfil.jsx'
+import { usePengaturan } from '../hooks/usePengaturan.jsx'
 import { useDashboard } from '../hooks/useDashboard.jsx'
 import { formatRupiah, formatTanggal } from '../lib/format.js'
 import { supabase } from '../lib/supabaseClient.js'
@@ -14,6 +15,7 @@ import TombolPasang from '../components/TombolPasang.jsx'
 export default function Beranda() {
   const { user } = useAuth()
   const profil = useProfil()
+  const { pengaturan } = usePengaturan()
   const { show } = useToast()
   const { kamar, tagihan, sewaAktif, loading, error, okupansi, ringkasanPendapatan, tunggakan, jatuhTempo7, menunggak, grafikPendapatan } = useDashboard()
   const { jumlahMenunggu } = usePemesanan()
@@ -42,7 +44,7 @@ export default function Beranda() {
     const nomor = item.sewa?.penghuni?.no_hp || ''
     if (!nomor || !nomor.replace(/\D/g, '').length) return show('Nomor HP tidak valid', 'error')
     const terlambat = item.status === 'belum' && (item.jatuh_tempo || '') < todayStr
-    const msg = buatPesanTagihan({ nama: item.sewa?.penghuni?.nama || '-', nama_kos: profil?.nama_kos || 'kos kami', nomor_kamar: item.sewa?.kamar?.nomor || '-', periode: item.periode || '', jumlah: item.jumlah || 0, jatuh_tempo: item.jatuh_tempo || '', terlambat })
+    const msg = buatPesanTagihan({ nama: item.sewa?.penghuni?.nama || '-', nama_kos: profil?.nama_kos || 'kos kami', nomor_kamar: item.sewa?.kamar?.nomor || '-', periode: item.periode || '', jumlah: item.jumlah || 0, jatuh_tempo: item.jatuh_tempo || '', terlambat, info_pembayaran: pengaturan.info_pembayaran })
     window.open(buatLinkWA(nomor, msg), '_blank', 'noopener')
   }
 

@@ -14,18 +14,21 @@ export default function Pengaturan() {
   const [hariTagih, setHariTagih] = useState(1)
   const [depositStr, setDepositStr] = useState('')
   const [aturan, setAturan] = useState('')
+  const [infoPembayaran, setInfoPembayaran] = useState('')
   const [saving, setSaving] = useState(false)
 
-  useState(() => {
+  useEffect(() => {
     setDendaStr(formatRupiah(pengaturan.denda_per_hari))
     setTenggang(pengaturan.masa_tenggang_hari)
     setHariTagih(pengaturan.hari_tagih_default)
     setDepositStr(formatRupiah(pengaturan.deposit_default))
     setAturan(pengaturan.aturan_kos)
+    setInfoPembayaran(pengaturan.info_pembayaran)
   }, [pengaturan])
 
   const handleSave = async () => {
     if (aturan.length > 2000) return show('Aturan kos maksimal 2000 karakter', 'error')
+    if (infoPembayaran.length > 500) return show('Info pembayaran maksimal 500 karakter', 'error')
     setSaving(true)
     const ok = await simpan({
       denda_per_hari: parseRupiah(dendaStr),
@@ -33,6 +36,7 @@ export default function Pengaturan() {
       hari_tagih_default: Math.max(1, Math.min(28, parseInt(hariTagih || 1))),
       deposit_default: parseRupiah(depositStr),
       aturan_kos: aturan.trim(),
+      info_pembayaran: infoPembayaran.trim(),
     })
     setSaving(false)
   }
@@ -64,6 +68,20 @@ export default function Pengaturan() {
         <label className="block text-xs font-bold text-emerald-700 uppercase tracking-wider mb-1">Aturan kos (maks 2000 karakter)</label>
         <textarea value={aturan} onChange={e => setAturan(e.target.value)} rows={5} maxLength={2000} className="w-full px-4 py-3 rounded-xl bg-emerald-50/60 border border-emerald-100 focus:outline-none focus:ring-2 focus:ring-emerald-400" placeholder="Tulis aturan kos..." />
         <div className="text-xs text-emerald-400 mt-1">{aturan.length}/2000</div>
+      </div>
+      <div className="mb-4">
+        <h2 className="text-lg font-extrabold text-emerald-800 mb-3">Info Pembayaran</h2>
+        <label className="block text-xs font-bold text-emerald-700 uppercase tracking-wider mb-1">Info pembayaran (maks 500 karakter)</label>
+        <textarea
+          value={infoPembayaran}
+          onChange={e => setInfoPembayaran(e.target.value)}
+          rows={4}
+          maxLength={500}
+          className="w-full px-4 py-3 rounded-xl bg-emerald-50/60 border border-emerald-100 focus:outline-none focus:ring-2 focus:ring-emerald-400"
+          placeholder="Contoh: Transfer ke BRI 1234567890 a.n. Nama Pemilik, atau bayar tunai ke pemilik"
+        />
+        <div className={`text-xs mt-1 ${infoPembayaran.length > 450 ? 'text-amber-600 font-bold' : 'text-emerald-400'}`}>{infoPembayaran.length}/500</div>
+        <p className="text-xs text-emerald-500 mt-2">Ditambahkan otomatis di akhir pesan pengingat tagihan via WhatsApp. Tidak ditampilkan di halaman publik.</p>
       </div>
       <button onClick={handleSave} disabled={saving} className="w-full py-3 rounded-xl bg-emerald-600 text-white font-bold shadow-lg shadow-emerald-200 hover:bg-emerald-700 transition">Simpan Pengaturan</button>
     </div>

@@ -1,22 +1,34 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect } from 'react'
 import { useAuth } from '../hooks/useAuth.jsx'
-import { useSewa } from '../hooks/useSewa.jsx'
+import { useSewaHalaman } from '../hooks/useSewaHalaman.js'
 import { formatRupiah, parseRupiah, formatTanggal } from '../lib/format.js'
 import { supabase } from '../lib/supabaseClient.js'
 import { usePengaturan } from '../hooks/usePengaturan.jsx'
 import Modal from '../components/Modal.jsx'
-import ConfirmDialog from '../components/ConfirmDialog.jsx'
 import EmptyState from '../components/EmptyState.jsx'
+import Pagination from '../components/Pagination.jsx'
+import { DEFAULT_PER_HALAMAN, hitungTotalHalaman } from '../lib/paginasi.js'
 
+// Tanggal lokal (bukan UTC) dalam format YYYY-MM-DD
 function todayStr() {
   const d = new Date()
-  return d.toISOString().split('T')[0]
+  const p = (n) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`
 }
 
 export default function Sewa() {
   const { user } = useAuth()
-  const { aktif, riwayat, loading, error, reload, mulaiSewa, akhiriSewa } = useSewa()
   const [tab, setTab] = useState('aktif')
+  const [halaman, setHalaman] = useState(1)
+  const [perHalaman, setPerHalaman] = useState(DEFAULT_PER_HALAMAN)
+  const [teksCari, setTeksCari] = useState('')
+  const [cari, setCari] = useState('')
+
+  const statusDb = tab === 'aktif' ? 'aktif' : 'selesai'
+  const { data, total, jumlah, loading, error, mulaiSewa, akhiriSewa } = useSewaHalaman({
+    halaman, perHalaman, cari, status: statusDb
+  })
+
   const [openStart, setOpenStart] = useState(false)
   const [openEnd, setOpenEnd] = useState(false)
   const [endId, setEndId] = useState(null)
@@ -36,6 +48,22 @@ export default function Sewa() {
   const [quickNo, setQuickNo] = useState('')
   const [quickOpen, setQuickOpen] = useState(false)
 
+  // Debounce pencarian 300 ms
+  useEffect(() => {
+    const t = setTimeout(() => setCari(teksCari.trim()), 300)
+    return () => clearTimeout(t)
+  }, [teksCari])
+
+  // Saat cari, tab, atau perHalaman berubah, kembali ke halaman 1
+  useEffect(() => { setHalaman(1) }, [cari, tab, perHalaman])
+
+  // Bila halaman saat ini melewati total halaman (mis. setelah akhiri sewa), mundur
+  useEffect(() => {
+    if (loading || total === 0) return
+    const akhir = hitungTotalHalaman(total, perHalaman)
+    if (halaman > akhir) setHalaman(akhir)
+  }, [loading, total, perHalaman, halaman])
+
   useEffect(() => {
     if (!openStart || !user) return
     supabase.from('kamar').select('id,nomor').eq('user_id', user.id).eq('status', 'kosong').order('nomor').then(({ data }) => setKamarOptions(data || []))
@@ -54,7 +82,7 @@ export default function Sewa() {
     const tagih = Math.max(1, Math.min(28, parseInt(hariTagih || 1)))
     const harga = parseRupiah(hargaSewa)
     if (harga <= 0) return alert('Harga sewa wajib')
-    await mulaiSewa({
+    const ok = await mulaiSewa({
       p_kamar: selectedKamar,
       p_penghuni: selectedPenghuni,
       p_tanggal_masuk: tanggalMasuk,
@@ -62,7 +90,12 @@ export default function Sewa() {
       p_harga: harga,
       p_deposit: parseRupiah(deposit)
     })
-    setOpenStart(false)
+    if (ok) {
+      setOpenStart(false)
+      setSelectedKamar('')
+      setSelectedPenghuni('')
+      setHargaSewa('')
+    }
   }
 
   const handleSaveQuick = async () => {
@@ -78,9 +111,9 @@ export default function Sewa() {
 
   const handleEnd = async () => {
     if (!endId) return
-    if (endDate < (aktif.find(a => a.id === endId)?.tanggal_masuk || '')) return alert('Tanggal keluar tidak boleh sebelum tanggal masuk')
-    await akhiriSewa(endId, endDate)
-    setOpenEnd(false)
+    if (endDate < (data.find(a => a.id === endId)?.tanggal_masuk || '')) return alert('Tanggal keluar tidak boleh sebelum tanggal masuk')
+    const ok = await akhiriSewa(endId, endDate)
+    if (ok) setOpenEnd(false)
   }
 
   useEffect(() => {
@@ -101,13 +134,12 @@ export default function Sewa() {
   // Default tagih from tanggal masuk
   useEffect(() => {
     if (tanggalMasuk) {
-      const d = new Date(tanggalMasuk)
-      const day = d.getDate()
-      setHariTagih(Math.min(28, day))
+      const day = parseInt(tanggalMasuk.split('-')[2], 10)
+      if (day) setHariTagih(Math.min(28, day))
     }
   }, [tanggalMasuk])
 
-  const data = tab === 'aktif' ? aktif : riwayat
+  const gayaTab = (aktifTab) => `px-4 py-2 rounded-xl font-bold text-sm transition ${aktifTab ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-200' : 'bg-white text-emerald-600 border border-emerald-100'}`
 
   return (
     <div>
@@ -116,14 +148,23 @@ export default function Sewa() {
         <button onClick={() => setOpenStart(true)} className="px-4 py-2.5 rounded-xl bg-emerald-600 text-white font-bold shadow-lg shadow-emerald-200 hover:bg-emerald-700 transition">+ Mulai Sewa</button>
       </div>
 
-      <div className="flex gap-2 mb-6">
-        <button onClick={() => setTab('aktif')} className={`px-4 py-2 rounded-xl font-bold text-sm transition ${tab === 'aktif' ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-200' : 'bg-white text-emerald-600 border border-emerald-100'}`}>Aktif</button>
-        <button onClick={() => setTab('riwayat')} className={`px-4 py-2 rounded-xl font-bold text-sm transition ${tab === 'riwayat' ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-200' : 'bg-white text-emerald-600 border border-emerald-100'}`}>Riwayat</button>
+      <div className="flex gap-2 mb-4">
+        <button onClick={() => setTab('aktif')} className={gayaTab(tab === 'aktif')}>Aktif ({jumlah.aktif})</button>
+        <button onClick={() => setTab('riwayat')} className={gayaTab(tab === 'riwayat')}>Riwayat ({jumlah.selesai})</button>
       </div>
+
+      <input
+        value={teksCari}
+        onChange={e => setTeksCari(e.target.value)}
+        placeholder="Cari nama penghuni, nomor HP, atau nomor kamar..."
+        className="w-full mb-6 px-4 py-3 rounded-xl bg-emerald-50/60 border border-emerald-100 focus:outline-none focus:ring-2 focus:ring-emerald-400"
+      />
 
       {loading && <div className="text-center py-8 text-emerald-500">Memuat...</div>}
       {error && <div className="rounded-xl bg-red-50 border border-red-100 text-red-700 px-4 py-3 mb-4">{error}</div>}
-      {!loading && data.length === 0 && <EmptyState title={tab === 'aktif' ? 'Belum ada sewa aktif' : 'Belum ada riwayat'} desc="Yuk mulai sewa pertama." />}
+      {!loading && !error && total === 0 && (cari
+        ? <EmptyState title="Tidak ada sewa yang cocok" desc="Coba ubah kata kunci pencarian." />
+        : <EmptyState title={tab === 'aktif' ? 'Belum ada sewa aktif' : 'Belum ada riwayat'} desc="Yuk mulai sewa pertama." />)}
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {data.map(s => (
@@ -145,6 +186,15 @@ export default function Sewa() {
           </div>
         ))}
       </div>
+
+      <Pagination
+        halaman={halaman}
+        perHalaman={perHalaman}
+        total={total}
+        onUbahHalaman={setHalaman}
+        onUbahPerHalaman={setPerHalaman}
+        loading={loading}
+      />
 
       {/* Start Modal */}
       <Modal open={openStart} onClose={() => setOpenStart(false)} title="Mulai Sewa">
@@ -198,7 +248,7 @@ export default function Sewa() {
         </div>
       </Modal>
 
-      {/* End Confirm */}
+      {/* End Modal */}
       <Modal open={openEnd} onClose={() => setOpenEnd(false)} title="Akhiri Sewa">
         <div className="space-y-3">
           <div>
@@ -208,8 +258,6 @@ export default function Sewa() {
           <button onClick={handleEnd} className="w-full py-3 rounded-xl bg-amber-500 text-white font-bold shadow-lg shadow-amber-200 hover:bg-amber-600 transition">Konfirmasi Akhiri</button>
         </div>
       </Modal>
-
-      {/* End date input inside confirm? We'll use a simple overlay inside Confirm or separate modal. To keep simple, we'll put date input inside ConfirmDialog message via extra prop? Not supported now. Instead use a separate small modal for end date or rely on state. Actually ConfirmDialog just has message; we can include a date input inside message by passing JSX? No, message is string. Let's replace ConfirmDialog usage with direct Modal for end confirmation to include date input. */}
     </div>
   )
 }

@@ -8,14 +8,18 @@ export function normalisasiNomor(nomor) {
 
 import { formatRupiah, formatTanggal } from './format.js'
 
-export function buatPesanTagihan({ nama, nama_kos, nomor_kamar, periode, jumlah, jatuh_tempo, terlambat, denda, hariTelat }) {
+export function buatPesanTagihan({ nama, nama_kos, nomor_kamar, periode, jumlah, jatuh_tempo, terlambat, denda, hariTelat, info_pembayaran }) {
   const kos = nama_kos || 'kos kami'
+  let msg
   if (terlambat) {
-    let msg = `Halo ${nama}, tagihan kos ${kos} kamar ${nomor_kamar} periode ${periode} sebesar ${formatRupiah(jumlah)} sudah melewati jatuh tempo (${formatTanggal(jatuh_tempo)}). Mohon segera dilunasi ya. Terima kasih.`
+    msg = `Halo ${nama}, tagihan kos ${kos} kamar ${nomor_kamar} periode ${periode} sebesar ${formatRupiah(jumlah)} sudah melewati jatuh tempo (${formatTanggal(jatuh_tempo)}). Mohon segera dilunasi ya. Terima kasih.`
     if (denda > 0) msg += ` Denda keterlambatan saat ini ${formatRupiah(denda)} (${hariTelat} hari).`
-    return msg
+  } else {
+    msg = `Halo ${nama}, mengingatkan tagihan kos ${kos} kamar ${nomor_kamar} periode ${periode} sebesar ${formatRupiah(jumlah)}, jatuh tempo ${formatTanggal(jatuh_tempo)}. Terima kasih.`
   }
-  return `Halo ${nama}, mengingatkan tagihan kos ${kos} kamar ${nomor_kamar} periode ${periode} sebesar ${formatRupiah(jumlah)}, jatuh tempo ${formatTanggal(jatuh_tempo)}. Terima kasih.`
+  const info = String(info_pembayaran || '').trim()
+  if (info) msg += `\nPembayaran: ${info}`
+  return msg
 }
 
 export function buatLinkWA(nomor, pesan) {

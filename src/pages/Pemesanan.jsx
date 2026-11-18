@@ -1,6 +1,6 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useAuth } from '../hooks/useAuth.jsx'
-import { usePemesanan } from '../hooks/usePemesanan.js'
+import { usePemesananHalaman } from '../hooks/usePemesananHalaman.js'
 import { usePengaturan } from '../hooks/usePengaturan.jsx'
 import { formatTanggal, formatRupiah, parseRupiah } from '../lib/format.js'
 import { buatPesanPemesanan, buatLinkWA, buatLinkWAShare } from '../lib/whatsapp.js'
@@ -8,6 +8,8 @@ import { useToast } from '../components/Toast.jsx'
 import EmptyState from '../components/EmptyState.jsx'
 import Modal from '../components/Modal.jsx'
 import ConfirmDialog from '../components/ConfirmDialog.jsx'
+import Pagination from '../components/Pagination.jsx'
+import { DEFAULT_PER_HALAMAN, hitungTotalHalaman } from '../lib/paginasi.js'
 
 const STATUS = {
   menunggu: { label: 'Menunggu', cls: 'bg-amber-50 text-amber-700 border-amber-200' },
@@ -54,8 +56,11 @@ export default function Pemesanan() {
   const { user } = useAuth()
   const { show } = useToast()
   const { pengaturan } = usePengaturan()
-  const { data, loading, error, setujui, tolak, jumlahMenunggu } = usePemesanan()
   const [tab, setTab] = useState('menunggu')
+  const [halaman, setHalaman] = useState(1)
+  const [perHalaman, setPerHalaman] = useState(DEFAULT_PER_HALAMAN)
+  const { data, total, jumlah, loading, error, setujui, tolak } = usePemesananHalaman({ halaman, perHalaman, tab })
+  const jumlahMenunggu = jumlah.menunggu
 
   const [setujuiId, setSetujuiId] = useState(null)
   const [formSetujui, setFormSetujui] = useState({ hariTagih: 1, harga: '', deposit: '' })
@@ -64,6 +69,16 @@ export default function Pemesanan() {
 
   const [tolakId, setTolakId] = useState(null)
   const [alasanTolak, setAlasanTolak] = useState('')
+
+  // Saat tab atau perHalaman berubah, kembali ke halaman 1
+  useEffect(() => { setHalaman(1) }, [tab, perHalaman])
+
+  // Bila halaman saat ini melewati total halaman (mis. setelah setujui atau tolak), mundur
+  useEffect(() => {
+    if (loading || total === 0) return
+    const akhir = hitungTotalHalaman(total, perHalaman)
+    if (halaman > akhir) setHalaman(akhir)
+  }, [loading, total, perHalaman, halaman])
 
   const linkPemesanan = user ? `${window.location.origin}/kos/${user.id}` : ''
   const pesanBagikan = `Halo! Silakan lihat kamar yang tersedia dan ajukan pemesanan lewat link ini: ${linkPemesanan}. Terima kasih.`
@@ -86,9 +101,8 @@ export default function Pemesanan() {
     }
   }
 
-  const daftar = tab === 'menunggu'
-    ? data.filter(p => p.status === 'menunggu')
-    : data.filter(p => p.status !== 'menunggu')
+  // Data sudah difilter per tab di server
+  const daftar = data
 
   const pSetujui = data.find(p => p.id === setujuiId)
   const pTolak = data.find(p => p.id === tolakId)
@@ -171,13 +185,13 @@ export default function Pemesanan() {
           onClick={() => setTab('menunggu')}
           className={`px-4 py-2 rounded-xl font-bold text-sm transition ${tab === 'menunggu' ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-200' : 'bg-white text-emerald-600 border border-emerald-100'}`}
         >
-          Menunggu{jumlahMenunggu > 0 ? ` (${jumlahMenunggu})` : ''}
+          Menunggu ({jumlah.menunggu})
         </button>
         <button
           onClick={() => setTab('diproses')}
           className={`px-4 py-2 rounded-xl font-bold text-sm transition ${tab === 'diproses' ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-200' : 'bg-white text-emerald-600 border border-emerald-100'}`}
         >
-          Diproses
+          Diproses ({jumlah.diproses})
         </button>
       </div>
 
@@ -254,6 +268,15 @@ export default function Pemesanan() {
           })}
         </div>
       )}
+
+      <Pagination
+        halaman={halaman}
+        perHalaman={perHalaman}
+        total={total}
+        onUbahHalaman={setHalaman}
+        onUbahPerHalaman={setPerHalaman}
+        loading={loading}
+      />
 
       <Modal open={!!setujuiId} onClose={() => { if (!proses) { setKonfirmasiBuka(false); setSetujuiId(null) } }} title="Setujui Pemesanan">
         <div className="space-y-3">

@@ -1,6 +1,5 @@
-import { useState, useMemo } from 'react'
-import { useAuth } from '../hooks/useAuth.jsx'
-import { useTagihan } from '../hooks/useTagihan.jsx'
+import { useState, useEffect, useMemo } from 'react'
+import { useTagihanHalaman, hariIni } from '../hooks/useTagihanHalaman.js'
 import { usePengaturan } from '../hooks/usePengaturan.jsx'
 import { hitungDenda } from '../lib/denda.js'
 import { formatRupiah, formatTanggal } from '../lib/format.js'
@@ -11,20 +10,52 @@ import { useToast } from '../components/Toast.jsx'
 import Modal from '../components/Modal.jsx'
 import ConfirmDialog from '../components/ConfirmDialog.jsx'
 import EmptyState from '../components/EmptyState.jsx'
+import Pagination from '../components/Pagination.jsx'
+import { DEFAULT_PER_HALAMAN, hitungTotalHalaman } from '../lib/paginasi.js'
 
 export default function Tagihan() {
-  const { user } = useAuth()
   const profil = useProfil()
   const { show } = useToast()
-  const { list, filteredList, loading, error, periode, setPeriode, statusFilter, setStatusFilter, reload, buatTagihan, tandaiLunas, batalkanLunas, ringkasan } = useTagihan()
   const { pengaturan } = usePengaturan()
+
+  const [periode, setPeriode] = useState(() => {
+    const d = new Date()
+    return new Date(d.getFullYear(), d.getMonth(), 1)
+  })
+  const periodeStr = `${periode.getFullYear()}-${String(periode.getMonth() + 1).padStart(2, '0')}-01`
+  const [statusFilter, setStatusFilter] = useState('semua')
+  const [halaman, setHalaman] = useState(1)
+  const [perHalaman, setPerHalaman] = useState(DEFAULT_PER_HALAMAN)
+  const [teksCari, setTeksCari] = useState('')
+  const [cari, setCari] = useState('')
+
+  const { data, total, ringkasan, loading, error, buatTagihan, tandaiLunas, batalkanLunas } = useTagihanHalaman({
+    halaman, perHalaman, periode: periodeStr, status: statusFilter, cari
+  })
+
   const [openMark, setOpenMark] = useState(false)
   const [markId, setMarkId] = useState(null)
-  const [tglBayar, setTglBayar] = useState(new Date().toISOString().split('T')[0])
+  const [tglBayar, setTglBayar] = useState(hariIni())
   const [metode, setMetode] = useState('tunai')
   const [dendaMark, setDendaMark] = useState(0)
   const [openCancel, setOpenCancel] = useState(false)
   const [cancelId, setCancelId] = useState(null)
+
+  // Debounce pencarian 300 ms
+  useEffect(() => {
+    const t = setTimeout(() => setCari(teksCari.trim()), 300)
+    return () => clearTimeout(t)
+  }, [teksCari])
+
+  // Saat cari, filter, periode, atau perHalaman berubah, kembali ke halaman 1
+  useEffect(() => { setHalaman(1) }, [cari, statusFilter, periodeStr, perHalaman])
+
+  // Bila halaman saat ini melewati total halaman (mis. setelah tandai lunas di filter Belum bayar), mundur
+  useEffect(() => {
+    if (loading || total === 0) return
+    const akhir = hitungTotalHalaman(total, perHalaman)
+    if (halaman > akhir) setHalaman(akhir)
+  }, [loading, total, perHalaman, halaman])
 
   const yearOptions = useMemo(() => {
     const y = new Date().getFullYear()
@@ -40,22 +71,21 @@ export default function Tagihan() {
 
   const handleMark = async () => {
     if (!tglBayar) return alert('Pilih tanggal bayar')
-    if (tglBayar > new Date().toISOString().split('T')[0]) return alert('Tanggal bayar tidak boleh di masa depan')
+    if (tglBayar > hariIni()) return alert('Tanggal bayar tidak boleh di masa depan')
     if (!markId) return
-    await tandaiLunas(markId, tglBayar, metode, dendaMark)
-    setOpenMark(false)
+    const ok = await tandaiLunas(markId, tglBayar, metode, dendaMark)
+    if (ok) setOpenMark(false)
   }
 
   const handleCancel = async () => {
     if (!cancelId) return
-    await batalkanLunas(cancelId)
-    setOpenCancel(false)
+    const ok = await batalkanLunas(cancelId)
+    if (ok) setOpenCancel(false)
   }
 
   const statusBadge = (i) => {
-    const todayStr = new Date().toISOString().split('T')[0]
     if (i.status === 'lunas') return <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 border border-emerald-200">Lunas</span>
-    if (i.status === 'belum' && (i.jatuh_tempo || '') < todayStr) return <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-red-100 text-red-700 border border-red-200">Terlambat</span>
+    if (i.status === 'belum' && (i.jatuh_tempo || '') < hariIni()) return <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-red-100 text-red-700 border border-red-200">Terlambat</span>
     return <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 border border-amber-200">Belum bayar</span>
   }
 
@@ -81,13 +111,20 @@ export default function Tagihan() {
         </div>
       </div>
 
-      <div className="flex gap-2 mb-6">
+      <div className="flex flex-wrap gap-2 mb-4">
         {['semua', 'belum', 'lunas', 'terlambat'].map(s => (
           <button key={s} onClick={() => setStatusFilter(s)} className={`px-3 py-1.5 rounded-xl text-xs font-bold transition ${statusFilter === s ? 'bg-emerald-600 text-white shadow-md' : 'bg-white text-emerald-600 border border-emerald-100'}`}>
             {s === 'semua' ? 'Semua' : s === 'belum' ? 'Belum bayar' : s === 'lunas' ? 'Lunas' : 'Terlambat'}
           </button>
         ))}
       </div>
+
+      <input
+        value={teksCari}
+        onChange={e => setTeksCari(e.target.value)}
+        placeholder="Cari nama penghuni, nomor HP, atau nomor kamar..."
+        className="w-full mb-6 px-4 py-3 rounded-xl bg-emerald-50/60 border border-emerald-100 focus:outline-none focus:ring-2 focus:ring-emerald-400"
+      />
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
         <div className="rounded-2xl p-4 bg-emerald-600 text-white shadow-lg shadow-emerald-200"><div className="text-xs font-semibold opacity-80">Total</div><div className="text-2xl font-extrabold">{ringkasan.total}</div></div>
@@ -98,10 +135,12 @@ export default function Tagihan() {
 
       {loading && <div className="text-center py-8 text-emerald-500">Memuat...</div>}
       {error && <div className="rounded-xl bg-red-50 border border-red-100 text-red-700 px-4 py-3 mb-4">{error}</div>}
-      {!loading && filteredList.length === 0 && <EmptyState title="Belum ada tagihan" desc="Tekan Buat Tagihan Bulan Ini." />}
+      {!loading && !error && total === 0 && (cari || statusFilter !== 'semua'
+        ? <EmptyState title="Tidak ada tagihan yang cocok" desc="Coba ubah kata kunci atau filter." />
+        : <EmptyState title="Belum ada tagihan" desc="Tekan Buat Tagihan Bulan Ini." />)}
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {filteredList.map(i => (
+        {data.map(i => (
           <div key={i.id} className="bg-white/80 backdrop-blur rounded-3xl shadow-md border border-emerald-100 p-5 transition hover:shadow-xl">
             <div className="flex items-center justify-between mb-2">
               <div className="font-extrabold text-emerald-800 text-lg">Kamar {i.sewa?.kamar?.nomor || '-'}</div>
@@ -111,19 +150,18 @@ export default function Tagihan() {
             <div className="text-xs text-emerald-400 mb-2">Periode: {i.periode}</div>
             <div className="text-xl font-extrabold text-emerald-800 mb-1">{formatRupiah(i.jumlah || 0)}</div>
             <div className="text-sm text-emerald-500 mb-3">Jatuh tempo: {formatTanggal(i.jatuh_tempo)}</div>
-            {i.status === 'belum' && (i.jatuh_tempo || '') < new Date().toISOString().split('T')[0] && (() => {
-              const { denda, hariTelat } = hitungDenda(i, pengaturan, new Date().toISOString().split('T')[0])
+            {i.status === 'belum' && (i.jatuh_tempo || '') < hariIni() && (() => {
+              const { denda, hariTelat } = hitungDenda(i, pengaturan, hariIni())
               if (denda > 0) return <div className="text-xs font-bold text-red-600 mb-2">Denda: {formatRupiah(denda)} ({hariTelat} hari)</div>
               return null
             })()}
             <div className="flex gap-2">
               {i.status === 'belum' && (
                 <button onClick={() => {
-                  const item = list.find(x => x.id === i.id)
                   setMarkId(i.id)
-                  setTglBayar(new Date().toISOString().split('T')[0])
+                  setTglBayar(hariIni())
                   setMetode('tunai')
-                  const { denda } = hitungDenda(item, pengaturan, new Date().toISOString().split('T')[0])
+                  const { denda } = hitungDenda(i, pengaturan, hariIni())
                   setDendaMark(denda)
                   setOpenMark(true)
                 }} className="flex-1 py-2 rounded-xl bg-emerald-600 text-white text-sm font-bold hover:bg-emerald-700 transition">Tandai Lunas</button>
@@ -135,9 +173,9 @@ export default function Tagihan() {
                 <button onClick={() => {
                   const nomor = i.sewa?.penghuni?.no_hp || ''
                   if (!normalisasiNomor(nomor)) return show('Nomor HP tidak valid', 'error')
-                  const terlambat = i.status === 'belum' && (i.jatuh_tempo || '') < new Date().toISOString().split('T')[0]
-                  const { denda, hariTelat } = terlambat ? hitungDenda(i, pengaturan, new Date().toISOString().split('T')[0]) : { denda: 0, hariTelat: 0 }
-                  const msg = buatPesanTagihan({ nama: i.sewa?.penghuni?.nama || '-', nama_kos: profil?.nama_kos || 'kos kami', nomor_kamar: i.sewa?.kamar?.nomor || '-', periode: i.periode || '', jumlah: i.jumlah || 0, jatuh_tempo: i.jatuh_tempo || '', terlambat, denda, hariTelat })
+                  const terlambat = i.status === 'belum' && (i.jatuh_tempo || '') < hariIni()
+                  const { denda, hariTelat } = terlambat ? hitungDenda(i, pengaturan, hariIni()) : { denda: 0, hariTelat: 0 }
+                  const msg = buatPesanTagihan({ nama: i.sewa?.penghuni?.nama || '-', nama_kos: profil?.nama_kos || 'kos kami', nomor_kamar: i.sewa?.kamar?.nomor || '-', periode: i.periode || '', jumlah: i.jumlah || 0, jatuh_tempo: i.jatuh_tempo || '', terlambat, denda, hariTelat, info_pembayaran: pengaturan.info_pembayaran })
                   window.open(buatLinkWA(nomor, msg), '_blank', 'noopener')
                 }} className="px-3 py-2 rounded-xl bg-emerald-50 text-emerald-700 text-xs font-bold hover:bg-emerald-100 transition">Ingatkan WA</button>
               )}
@@ -149,11 +187,20 @@ export default function Tagihan() {
         ))}
       </div>
 
+      <Pagination
+        halaman={halaman}
+        perHalaman={perHalaman}
+        total={total}
+        onUbahHalaman={setHalaman}
+        onUbahPerHalaman={setPerHalaman}
+        loading={loading}
+      />
+
       <Modal open={openMark} onClose={() => setOpenMark(false)} title="Tandai Lunas">
         <div className="space-y-3">
           <div>
             <label className="block text-xs font-bold text-emerald-700 uppercase tracking-wider mb-1">Tanggal Bayar <span className="text-red-500">*</span></label>
-            <input type="date" value={tglBayar} max={new Date().toISOString().split('T')[0]} onChange={e => setTglBayar(e.target.value)} className="w-full px-4 py-3 rounded-xl bg-emerald-50/60 border border-emerald-100 focus:outline-none focus:ring-2 focus:ring-emerald-400" />
+            <input type="date" value={tglBayar} max={hariIni()} onChange={e => setTglBayar(e.target.value)} className="w-full px-4 py-3 rounded-xl bg-emerald-50/60 border border-emerald-100 focus:outline-none focus:ring-2 focus:ring-emerald-400" />
           </div>
           <div>
             <label className="block text-xs font-bold text-emerald-700 uppercase tracking-wider mb-1">Metode</label>

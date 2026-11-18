@@ -1,6 +1,6 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useCallback } from 'react'
 import { useAuth } from '../hooks/useAuth.jsx'
-import { usePenghuni } from '../hooks/usePenghuni.jsx'
+import { usePenghuniHalaman } from '../hooks/usePenghuniHalaman.js'
 import { usePengaturan } from '../hooks/usePengaturan.jsx'
 import { useProfil } from '../hooks/useProfil.jsx'
 import { normalisasiNomor, buatLinkWA } from '../lib/whatsapp.js'
@@ -8,6 +8,10 @@ import { supabase } from '../lib/supabaseClient.js'
 import Modal from '../components/Modal.jsx'
 import ConfirmDialog from '../components/ConfirmDialog.jsx'
 import EmptyState from '../components/EmptyState.jsx'
+import Pagination from '../components/Pagination.jsx'
+import { useToast } from '../components/Toast.jsx'
+import { umumkanDataBerubah, dengarDataBerubah } from '../lib/events.js'
+import { DEFAULT_PER_HALAMAN, hitungTotalHalaman } from '../lib/paginasi.js'
 
 function validateNoHP(str) {
   const cleaned = String(str || '').replace(/[\s\-+]/g, '').replace(/\D/g, '')
@@ -19,15 +23,44 @@ function validateNoHP(str) {
 
 export default function Penghuni() {
   const { user } = useAuth()
-  const { data: list, loading, error, reload, tambah, ubah, hapus } = usePenghuni()
+  const { show } = useToast()
   const { pengaturan } = usePengaturan()
   const profil = useProfil()
-  const [search, setSearch] = useState('')
+  const [halaman, setHalaman] = useState(1)
+  const [perHalaman, setPerHalaman] = useState(DEFAULT_PER_HALAMAN)
+  const [teksCari, setTeksCari] = useState('')
+  const [cari, setCari] = useState('')
   const [modalOpen, setModalOpen] = useState(false)
   const [confirmOpen, setConfirmOpen] = useState(false)
   const [editId, setEditId] = useState(null)
   const [form, setForm] = useState({ nama: '', no_hp: '', pekerjaan: '', kontak_darurat: '', catatan: '' })
   const [activeSewa, setActiveSewa] = useState({})
+  const [ringkasan, setRingkasan] = useState({ total: 0, aktif: 0 })
+
+  const { data: list, total, loading, error } = usePenghuniHalaman({ halaman, perHalaman, cari })
+
+  // Debounce pencarian 300 ms
+  useEffect(() => {
+    const t = setTimeout(() => setCari(teksCari.trim()), 300)
+    return () => clearTimeout(t)
+  }, [teksCari])
+
+  // Saat cari atau perHalaman berubah, kembali ke halaman 1
+  useEffect(() => { setHalaman(1) }, [cari, perHalaman])
+
+  // Ringkasan jumlah: menghitung SELURUH data, bukan hanya halaman tampil
+  const muatRingkasan = useCallback(async () => {
+    if (!user) return
+    const [{ count: tot }, { data: sewaAktif }] = await Promise.all([
+      supabase.from('penghuni').select('id', { count: 'exact', head: true }).eq('user_id', user.id),
+      supabase.from('sewa').select('penghuni_id').eq('user_id', user.id).eq('status', 'aktif')
+    ])
+    const unik = new Set((sewaAktif || []).map(s => s.penghuni_id).filter(Boolean))
+    setRingkasan({ total: tot || 0, aktif: unik.size })
+  }, [user])
+
+  useEffect(() => { muatRingkasan() }, [muatRingkasan])
+  useEffect(() => dengarDataBerubah(muatRingkasan), [muatRingkasan])
 
   useEffect(() => {
     if (!user || !list.length) { setActiveSewa({}); return }
@@ -39,19 +72,11 @@ export default function Penghuni() {
     })
   }, [list, user])
 
-  const filtered = useMemo(() => {
-    const kw = search.toLowerCase()
-    return list.filter(p =>
-      (p.nama || '').toLowerCase().includes(kw) ||
-      (p.no_hp || '').toLowerCase().includes(kw)
-    )
-  }, [list, search])
-
   const counts = useMemo(() => ({
-    total: list.length,
-    aktif: list.filter(p => activeSewa[p.id]).length,
-    tidak: list.filter(p => !activeSewa[p.id]).length,
-  }), [list, activeSewa])
+    total: ringkasan.total,
+    aktif: ringkasan.aktif,
+    tidak: Math.max(0, ringkasan.total - ringkasan.aktif),
+  }), [ringkasan])
 
   const openAdd = () => { setEditId(null); setForm({ nama: '', no_hp: '', pekerjaan: '', kontak_darurat: '', catatan: '' }); setModalOpen(true) }
   const openEdit = (p) => { setEditId(p.id); setForm({ nama: p.nama || '', no_hp: p.no_hp || '', pekerjaan: p.pekerjaan || '', kontak_darurat: p.kontak_darurat || '', catatan: p.catatan || '' }); setModalOpen(true) }
@@ -72,8 +97,67 @@ export default function Penghuni() {
     setModalOpen(false)
   }
 
+  const tambah = async (payload) => {
+    try {
+      const { error: err } = await supabase.from('penghuni').insert({ ...payload, user_id: user.id })
+      if (err) throw err
+      umumkanDataBerubah()
+      show('Penghuni berhasil ditambahkan', 'success')
+      return true
+    } catch (e) {
+      show(e.message || 'Gagal menambahkan penghuni', 'error')
+      return false
+    }
+  }
+
+  const ubah = async (id, payload) => {
+    try {
+      const { error: err } = await supabase.from('penghuni').update(payload).eq('id', id).eq('user_id', user.id)
+      if (err) throw err
+      umumkanDataBerubah()
+      show('Penghuni berhasil diubah', 'success')
+      return true
+    } catch (e) {
+      show(e.message || 'Gagal mengubah penghuni', 'error')
+      return false
+    }
+  }
+
+  const hapus = async (id) => {
+    try {
+      const { data: aktif } = await supabase.from('sewa').select('id').eq('penghuni_id', id).eq('status', 'aktif').limit(1)
+      if (aktif && aktif.length > 0) {
+        show('Penghuni ini masih memiliki sewa aktif, akhiri sewa dulu', 'error')
+        return false
+      }
+      const { data: riwayat } = await supabase.from('sewa').select('id').eq('penghuni_id', id).limit(1)
+      if (riwayat && riwayat.length > 0) {
+        show('Penghuni ini memiliki riwayat sewa dan tidak bisa dihapus', 'error')
+        return false
+      }
+      const { error: err } = await supabase.from('penghuni').delete().eq('id', id).eq('user_id', user.id)
+      if (err) throw err
+      umumkanDataBerubah()
+      show('Penghuni berhasil dihapus', 'success')
+      return true
+    } catch (e) {
+      show(e.message || 'Gagal menghapus penghuni', 'error')
+      return false
+    }
+  }
+
   const openDelete = (p) => { setEditId(p.id); setConfirmOpen(true) }
-  const doDelete = async () => { if (editId) await hapus(editId); setConfirmOpen(false) }
+  const doDelete = async () => {
+    if (editId) {
+      const ok = await hapus(editId)
+      // Jika halaman saat ini menjadi kosong, mundur ke halaman terakhir yang masih ada
+      if (ok) {
+        const akhir = hitungTotalHalaman(Math.max(0, total - 1), perHalaman)
+        if (halaman > akhir) setHalaman(akhir)
+      }
+    }
+    setConfirmOpen(false)
+  }
 
   return (
     <div>
@@ -96,15 +180,17 @@ export default function Penghuni() {
       </div>
 
       <div className="mb-4">
-        <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Cari nama atau nomor HP..." className="w-full px-4 py-3 rounded-xl bg-white border border-emerald-100 focus:outline-none focus:ring-2 focus:ring-emerald-400" />
+        <input value={teksCari} onChange={e => setTeksCari(e.target.value)} placeholder="Cari nama, nomor HP, atau pekerjaan..." className="w-full px-4 py-3 rounded-xl bg-white border border-emerald-100 focus:outline-none focus:ring-2 focus:ring-emerald-400" />
       </div>
 
       {loading && <div className="text-center py-8 text-emerald-500">Memuat...</div>}
       {error && <div className="rounded-xl bg-red-50 border border-red-100 text-red-700 px-4 py-3 mb-4">{error}</div>}
-      {!loading && filtered.length === 0 && <EmptyState title="Belum ada penghuni" desc="Yuk tambahkan yang pertama." />}
+      {!loading && total === 0 && (cari
+        ? <EmptyState title="Tidak ada penghuni yang cocok" desc="Coba ubah kata kunci pencarian." />
+        : <EmptyState title="Belum ada penghuni" desc="Yuk tambahkan yang pertama." />)}
 
       <div className="space-y-3">
-        {filtered.map(p => (
+        {list.map(p => (
           <div key={p.id} className="bg-white/80 backdrop-blur rounded-3xl shadow-md border border-emerald-100 p-5 transition hover:shadow-lg">
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0">
@@ -137,6 +223,15 @@ export default function Penghuni() {
           </div>
         ))}
       </div>
+
+      <Pagination
+        halaman={halaman}
+        perHalaman={perHalaman}
+        total={total}
+        onUbahHalaman={setHalaman}
+        onUbahPerHalaman={setPerHalaman}
+        loading={loading}
+      />
 
       <Modal open={modalOpen} onClose={() => setModalOpen(false)} title={editId ? 'Ubah Penghuni' : 'Tambah Penghuni'}>
         <div className="space-y-3">

@@ -1,20 +1,59 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useAuth } from '../hooks/useAuth.jsx'
-import { useKamar } from '../hooks/useKamar.jsx'
+import { useKamarHalaman } from '../hooks/useKamarHalaman.js'
 import { formatRupiah, parseRupiah } from '../lib/format.js'
 import Modal from '../components/Modal.jsx'
 import ConfirmDialog from '../components/ConfirmDialog.jsx'
 import EmptyState from '../components/EmptyState.jsx'
+import Pagination from '../components/Pagination.jsx'
+import { useToast } from '../components/Toast.jsx'
 import { supabase } from '../lib/supabaseClient.js'
+import { umumkanDataBerubah, dengarDataBerubah } from '../lib/events.js'
+import { DEFAULT_PER_HALAMAN, hitungTotalHalaman } from '../lib/paginasi.js'
 
 export default function Kamar() {
   const { user } = useAuth()
-  const { data: kamarList, loading, error, reload, tambah, ubah, hapus } = useKamar()
+  const { show } = useToast()
+  const [halaman, setHalaman] = useState(1)
+  const [perHalaman, setPerHalaman] = useState(DEFAULT_PER_HALAMAN)
+  const [teksCari, setTeksCari] = useState('')
+  const [cari, setCari] = useState('')
+  const [status, setStatus] = useState('semua')
   const [modalOpen, setModalOpen] = useState(false)
   const [confirmOpen, setConfirmOpen] = useState(false)
   const [editId, setEditId] = useState(null)
   const [form, setForm] = useState({ nomor: '', tipe: '', harga_bulanan: '', fasilitas: '', status: 'kosong' })
   const [tenants, setTenants] = useState({})
+  const [counts, setCounts] = useState({ total: 0, kosong: 0, terisi: 0, perbaikan: 0 })
+
+  const { data: kamarList, total, loading, error } = useKamarHalaman({ halaman, perHalaman, cari, status })
+
+  // Debounce pencarian 300 ms
+  useEffect(() => {
+    const t = setTimeout(() => setCari(teksCari.trim()), 300)
+    return () => clearTimeout(t)
+  }, [teksCari])
+
+  // Saat cari, filter, atau perHalaman berubah, kembali ke halaman 1
+  useEffect(() => { setHalaman(1) }, [cari, status, perHalaman])
+
+  // Ringkasan jumlah per status: menghitung SELURUH data, bukan hanya halaman tampil
+  const muatRingkasan = useCallback(async () => {
+    if (!user) return
+    const ambil = async (st) => {
+      let q = supabase.from('kamar').select('id', { count: 'exact', head: true }).eq('user_id', user.id)
+      if (st) q = q.eq('status', st)
+      const { count } = await q
+      return count || 0
+    }
+    const [t, kosong, terisi, perbaikan] = await Promise.all([
+      ambil(null), ambil('kosong'), ambil('terisi'), ambil('perbaikan')
+    ])
+    setCounts({ total: t, kosong, terisi, perbaikan })
+  }, [user])
+
+  useEffect(() => { muatRingkasan() }, [muatRingkasan])
+  useEffect(() => dengarDataBerubah(muatRingkasan), [muatRingkasan])
 
   useEffect(() => {
     if (!user || !kamarList.length) return
@@ -26,13 +65,6 @@ export default function Kamar() {
       setTenants(m)
     })
   }, [kamarList, user])
-
-  const counts = useMemo(() => ({
-    total: kamarList.length,
-    kosong: kamarList.filter(r => r.status === 'kosong').length,
-    terisi: kamarList.filter(r => r.status === 'terisi').length,
-    perbaikan: kamarList.filter(r => r.status === 'perbaikan').length,
-  }), [kamarList])
 
   const openAdd = () => {
     setEditId(null)
@@ -73,8 +105,72 @@ export default function Kamar() {
     setModalOpen(false)
   }
 
+  const tambah = async (payload) => {
+    try {
+      const { error: err } = await supabase.from('kamar').insert({
+        ...payload,
+        user_id: user.id,
+        status: payload.status || 'kosong'
+      })
+      if (err) {
+        if (err.message?.includes('duplicate') || err.code === '23505') throw new Error('Nomor kamar sudah digunakan')
+        throw err
+      }
+      umumkanDataBerubah()
+      show('Kamar berhasil ditambahkan', 'success')
+      return true
+    } catch (e) {
+      show(e.message || 'Gagal menambahkan kamar', 'error')
+      return false
+    }
+  }
+
+  const ubah = async (id, payload) => {
+    try {
+      const { error: err } = await supabase.from('kamar').update(payload).eq('id', id).eq('user_id', user.id)
+      if (err) {
+        if (err.message?.includes('duplicate') || err.code === '23505') throw new Error('Nomor kamar sudah digunakan')
+        throw err
+      }
+      umumkanDataBerubah()
+      show('Kamar berhasil diubah', 'success')
+      return true
+    } catch (e) {
+      show(e.message || 'Gagal mengubah kamar', 'error')
+      return false
+    }
+  }
+
+  const hapus = async (id) => {
+    try {
+      const { data: sewaCheck } = await supabase.from('sewa').select('id').eq('kamar_id', id).limit(1)
+      if (sewaCheck && sewaCheck.length > 0) {
+        show('Kamar ini masih memiliki data sewa', 'error')
+        return false
+      }
+      const { error: err } = await supabase.from('kamar').delete().eq('id', id).eq('user_id', user.id)
+      if (err) throw err
+      umumkanDataBerubah()
+      show('Kamar berhasil dihapus', 'success')
+      return true
+    } catch (e) {
+      show(e.message || 'Gagal menghapus kamar', 'error')
+      return false
+    }
+  }
+
   const openDelete = (k) => { setEditId(k.id); setConfirmOpen(true) }
-  const doDelete = async () => { if (editId) await hapus(editId); setConfirmOpen(false) }
+  const doDelete = async () => {
+    if (editId) {
+      const ok = await hapus(editId)
+      // Jika halaman saat ini menjadi kosong, mundur ke halaman terakhir yang masih ada
+      if (ok) {
+        const akhir = hitungTotalHalaman(Math.max(0, total - 1), perHalaman)
+        if (halaman > akhir) setHalaman(akhir)
+      }
+    }
+    setConfirmOpen(false)
+  }
 
   const statusColor = (s) => s === 'kosong' ? 'bg-emerald-100 text-emerald-800 border-emerald-200' : s === 'terisi' ? 'bg-blue-100 text-blue-800 border-blue-200' : 'bg-amber-100 text-amber-800 border-amber-200'
   const statusLabel = (s) => s === 'kosong' ? 'Kosong' : s === 'terisi' ? 'Terisi' : 'Perbaikan'
@@ -101,10 +197,32 @@ export default function Kamar() {
         ))}
       </div>
 
+      {/* Pencarian & filter status */}
+      <div className="flex flex-col sm:flex-row gap-3 mb-6">
+        <input
+          value={teksCari}
+          onChange={e => setTeksCari(e.target.value)}
+          placeholder="Cari nomor atau tipe kamar..."
+          className="flex-1 px-4 py-3 rounded-xl bg-emerald-50/60 border border-emerald-100 focus:outline-none focus:ring-2 focus:ring-emerald-400"
+        />
+        <select
+          value={status}
+          onChange={e => setStatus(e.target.value)}
+          className="px-4 py-3 rounded-xl bg-emerald-50/60 border border-emerald-100 font-semibold text-emerald-800 focus:outline-none focus:ring-2 focus:ring-emerald-400"
+        >
+          <option value="semua">Semua status</option>
+          <option value="kosong">Kosong</option>
+          <option value="terisi">Terisi</option>
+          <option value="perbaikan">Perbaikan</option>
+        </select>
+      </div>
+
       {loading && <div className="text-center py-8 text-emerald-500">Memuat...</div>}
       {error && <div className="rounded-xl bg-red-50 border border-red-100 text-red-700 px-4 py-3 mb-4">{error}</div>}
 
-      {!loading && kamarList.length === 0 && <EmptyState title="Belum ada kamar" desc="Yuk tambahkan yang pertama." />}
+      {!loading && total === 0 && (cari || status !== 'semua'
+        ? <EmptyState title="Tidak ada kamar yang cocok" desc="Coba ubah kata kunci atau filter." />
+        : <EmptyState title="Belum ada kamar" desc="Yuk tambahkan yang pertama." />)}
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {kamarList.map(k => (
@@ -126,6 +244,15 @@ export default function Kamar() {
           </div>
         ))}
       </div>
+
+      <Pagination
+        halaman={halaman}
+        perHalaman={perHalaman}
+        total={total}
+        onUbahHalaman={setHalaman}
+        onUbahPerHalaman={setPerHalaman}
+        loading={loading}
+      />
 
       <Modal open={modalOpen} onClose={() => setModalOpen(false)} title={editId ? 'Ubah Kamar' : 'Tambah Kamar'}>
         <div className="space-y-3">

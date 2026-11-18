@@ -12,6 +12,7 @@ export function usePengaturan() {
     hari_tagih_default: 1,
     deposit_default: 0,
     aturan_kos: '',
+    info_pembayaran: '',
   })
   const [loading, setLoading] = useState(true)
 
@@ -32,9 +33,10 @@ export function usePengaturan() {
           hari_tagih_default: data.hari_tagih_default ?? 1,
           deposit_default: data.deposit_default ?? 0,
           aturan_kos: data.aturan_kos || '',
+          info_pembayaran: data.info_pembayaran || '',
         })
       } else {
-        setPengaturan({ denda_per_hari: 0, masa_tenggang_hari: 0, hari_tagih_default: 1, deposit_default: 0, aturan_kos: '' })
+        setPengaturan({ denda_per_hari: 0, masa_tenggang_hari: 0, hari_tagih_default: 1, deposit_default: 0, aturan_kos: '', info_pembayaran: '' })
       }
     } catch (e) {
       // default values already set
@@ -55,6 +57,7 @@ export function usePengaturan() {
         hari_tagih_default: Number(values.hari_tagih_default) || 1,
         deposit_default: Number(values.deposit_default) || 0,
         aturan_kos: String(values.aturan_kos || ''),
+        info_pembayaran: String(values.info_pembayaran || ''),
         updated_at: new Date().toISOString(),
       }
       const { error } = await supabase.from('pengaturan_kos').upsert(payload, { onConflict: 'user_id' })
