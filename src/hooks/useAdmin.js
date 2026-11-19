@@ -27,7 +27,16 @@ export function useAdmin() {
       ])
       if (sres.error) throw sres.error
       if (kres.error) throw kres.error
-      if (sres.data) setStatistik(sres.data)
+            const baris = Array.isArray(sres.data) ? sres.data[0] : sres.data
+      if (baris) {
+        setStatistik({
+          jumlah_pemilik: Number(baris.jumlah_pemilik) || 0,
+          pemilik_aktif: Number(baris.pemilik_aktif) || 0,
+          total_kamar: Number(baris.total_kamar) || 0,
+          kamar_terisi: Number(baris.kamar_terisi) || 0,
+          sewa_aktif: Number(baris.sewa_aktif) || 0,
+        })
+      }
       setDaftarKos((kres.data || []).filter(k => tampilSebagaiPemilik(k, user)))
     } catch (e) {
       setError(e.message || 'Gagal memuat data admin')
