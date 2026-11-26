@@ -8,17 +8,25 @@ export function normalisasiNomor(nomor) {
 
 import { formatRupiah, formatTanggal } from './format.js'
 
-export function buatPesanTagihan({ nama, nama_kos, nomor_kamar, periode, jumlah, jatuh_tempo, terlambat, denda, hariTelat, info_pembayaran }) {
+export function buatPesanTagihan({ nama, nama_kos, nomor_kamar, periode, jumlah, jatuh_tempo, terlambat, denda, hariTelat, info_pembayaran, link_bayar, terbayar }) {
   const kos = nama_kos || 'kos kami'
+  const tb = Number(terbayar || 0)
+  const sisa = tb > 0 ? Number(jumlah || 0) + Number(denda || 0) - tb : Number(jumlah || 0)
+  const jumlahTampil = tb > 0 ? sisa : Number(jumlah || 0)
   let msg
   if (terlambat) {
-    msg = `Halo ${nama}, tagihan kos ${kos} kamar ${nomor_kamar} periode ${periode} sebesar ${formatRupiah(jumlah)} sudah melewati jatuh tempo (${formatTanggal(jatuh_tempo)}). Mohon segera dilunasi ya. Terima kasih.`
+    msg = `Halo ${nama}, tagihan kos ${kos} kamar ${nomor_kamar} periode ${periode} sebesar ${formatRupiah(jumlahTampil)} sudah melewati jatuh tempo (${formatTanggal(jatuh_tempo)}). Mohon segera dilunasi ya. Terima kasih.`
     if (denda > 0) msg += ` Denda keterlambatan saat ini ${formatRupiah(denda)} (${hariTelat} hari).`
   } else {
-    msg = `Halo ${nama}, mengingatkan tagihan kos ${kos} kamar ${nomor_kamar} periode ${periode} sebesar ${formatRupiah(jumlah)}, jatuh tempo ${formatTanggal(jatuh_tempo)}. Terima kasih.`
+    msg = `Halo ${nama}, mengingatkan tagihan kos ${kos} kamar ${nomor_kamar} periode ${periode} sebesar ${formatRupiah(jumlahTampil)}, jatuh tempo ${formatTanggal(jatuh_tempo)}. Terima kasih.`
+  }
+  if (tb > 0) {
+    msg += `\nSudah dibayar: ${formatRupiah(tb)}`
+    msg += `\nSisa tagihan: ${formatRupiah(sisa)}`
   }
   const info = String(info_pembayaran || '').trim()
   if (info) msg += `\nPembayaran: ${info}`
+  if (link_bayar) msg += `\nUnggah bukti transfer: ${link_bayar}`
   return msg
 }
 

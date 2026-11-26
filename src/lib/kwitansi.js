@@ -1,6 +1,6 @@
 import { formatRupiah, terbilang, formatPeriode, formatTanggal } from './format.js'
 
-export async function unduhKwitansi(tagihan, profil) {
+export async function unduhKwitansi(tagihan, profil, pembayaranList = []) {
   const { jsPDF } = await import('jspdf')
   const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a5' })
   const w = doc.internal.pageSize.getWidth()
@@ -55,6 +55,32 @@ export async function unduhKwitansi(tagihan, profil) {
     y += 7
   })
 
+  if ((pembayaranList || []).length > 1) {
+    y += 2
+    doc.setFont('helvetica', 'bold')
+    doc.setFontSize(9)
+    doc.text('Rincian Pembayaran:', 12, y)
+    y += 4
+    doc.setFontSize(8)
+    doc.text('Tanggal', 12, y)
+    doc.text('Metode', 50, y)
+    doc.text('Jumlah', 90, y)
+    y += 4
+    doc.setFont('helvetica', 'normal')
+    let total = 0
+    ;(pembayaranList || []).forEach(p => {
+      doc.text(p.tanggal ? formatTanggal(p.tanggal) : '-', 12, y)
+      doc.text(p.metode ? p.metode.charAt(0).toUpperCase() + p.metode.slice(1) : '-', 50, y)
+      doc.text(formatRupiah(p.jumlah || 0), 90, y)
+      total += Number(p.jumlah || 0)
+      y += 5
+    })
+    doc.setFont('helvetica', 'bold')
+    doc.text('Total', 12, y)
+    doc.text(formatRupiah(total), 90, y)
+    y += 6
+  }
+
   doc.line(10, y + 2, w - 10, y + 2)
   y += 8
   doc.setFont('helvetica', 'normal')
@@ -70,4 +96,76 @@ export async function unduhKwitansi(tagihan, profil) {
   doc.text(profil?.nama_pemilik || '-', 12, h - 16)
 
   doc.save(`kwitansi-kamar-${tagihan.sewa?.kamar?.nomor || '0'}-${yyyymm}.pdf`)
+}
+
+export async function unduhKwitansiPembayaran(tagihan, pembayaran, profil, sisaSaatItu) {
+  const { jsPDF } = await import('jspdf')
+  const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a5' })
+  const w = doc.internal.pageSize.getWidth()
+  const h = doc.internal.pageSize.getHeight()
+
+  doc.setFont('helvetica', 'bold')
+  doc.setFontSize(16)
+  doc.text('KWITANSI PEMBAYARAN', w / 2, 12, { align: 'center' })
+
+  doc.setFont('helvetica', 'normal')
+  doc.setFontSize(9)
+  doc.text(`Kos: ${profil?.nama_kos || 'Kos kami'}`, 10, 20)
+  if (profil?.alamat) doc.text(`Alamat: ${profil.alamat}`, 10, 24)
+  if (profil?.no_wa) doc.text(`No. WA: ${profil.no_wa}`, 10, profil?.alamat ? 28 : 24)
+
+  const yyyymm = (pembayaran?.tanggal || tagihan?.periode || '').toString().slice(0, 7) || new Date().toISOString().slice(0, 7)
+  const idCode = (pembayaran?.id || '').toString().toUpperCase().slice(0, 6).padEnd(6, '0')
+  doc.setFontSize(8)
+  doc.text(`No. Kwitansi: KWP-${yyyymm}-${idCode}`, w - 60, 20)
+
+  doc.setDrawColor(30, 120, 70)
+  doc.setLineWidth(0.5)
+  doc.line(10, 32, w - 10, 32)
+
+  const denda = tagihan?.status === 'lunas' ? (tagihan?.denda || 0) : 0
+  const totalTagihan = (tagihan?.jumlah || 0) + denda
+
+  const rows = [
+    ['Nama Penghuni', tagihan?.sewa?.penghuni?.nama || '-'],
+    ['Nomor Kamar', tagihan?.sewa?.kamar?.nomor || '-'],
+    ['Periode Sewa', formatPeriode(tagihan?.periode || '') || '-'],
+    ['Jumlah Tagihan', formatRupiah(tagihan?.jumlah || 0)],
+  ]
+  if (denda > 0) rows.push(['Denda', formatRupiah(denda)])
+  rows.push(
+    ['Jumlah Dibayar', formatRupiah(pembayaran?.jumlah || 0)],
+    ['Sisa Tagihan', formatRupiah(sisaSaatItu)],
+    ['Jenis', 'Pembayaran sebagian'],
+    ['Tanggal Bayar', pembayaran?.tanggal ? formatTanggal(pembayaran.tanggal) : '-'],
+    ['Metode Bayar', pembayaran?.metode ? pembayaran.metode.charAt(0).toUpperCase() + pembayaran.metode.slice(1) : '-'],
+    ['Jumlah Terbilang', terbilang(pembayaran?.jumlah || 0)],
+  )
+
+  let y = 36
+  rows.forEach(([label, val]) => {
+    doc.setFont('helvetica', 'bold')
+    doc.setFontSize(9)
+    doc.text(label + ':', 12, y)
+    doc.setFont('helvetica', 'normal')
+    doc.text(String(val), 70, y)
+    y += 7
+  })
+
+  doc.line(10, y + 2, w - 10, y + 2)
+  y += 8
+  doc.setFont('helvetica', 'normal')
+  doc.setFontSize(9)
+  doc.text('Terima kasih atas pembayaran Anda.', 12, y)
+
+  doc.line(10, h - 30, 80, h - 30)
+  doc.setFont('helvetica', 'bold')
+  doc.setFontSize(10)
+  doc.text(`Pemilik`, 12, h - 22)
+  doc.setFont('helvetica', 'normal')
+  doc.setFontSize(9)
+  doc.text(profil?.nama_pemilik || '-', 12, h - 16)
+
+  const nomorKamar = tagihan?.sewa?.kamar?.nomor || '0'
+  doc.save(`kwitansi-pembayaran-kamar-${nomorKamar}-${yyyymm}-${idCode}.pdf`)
 }

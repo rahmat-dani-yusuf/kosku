@@ -141,3 +141,23 @@ Centang setiap butir sebelum deploy. Lakukan pada versi build produksi (`npm run
 - [ ] Mode offline menampilkan banner dan tidak merusak halaman
 - [ ] Menu mobile (bottom nav + Lainnya) dan sidebar desktop konsisten
 - [ ] Toast sukses/gagal tampil untuk semua aksi penting
+
+## 7. Bukti Transfer dan Cicilan
+
+- [ ] Penghuni dapat mengunggah bukti transfer dari halaman /bayar/:tagihanId
+- [ ] Jumlah yang ditransfer dapat diisi dan divalidasi (tidak melebihi sisa, memenuhi minimal bila cicilan)
+- [ ] Pemilik melihat bukti menunggu dan dapat menerima atau menolak
+- [ ] Penerimaan bukti mencatat pembayaran dan memperbarui terbayar/sisa
+- [ ] Tagihan berstatus Dicicil menampilkan badge biru, bilah progres, dan sisa
+- [ ] Tombol Catat Pembayaran membuka modal dengan validasi jumlah, tanggal, metode, denda, catatan
+- [ ] Tombol Riwayat menampilkan daftar pembayaran dan Hapus per baris
+- [ ] Batalkan Lunas menghapus semua pembayaran dan mengembalikan status belum bayar
+- [ ] Kwitansi per pembayaran (pembayaran sebagian) menampilkan sisa saat itu
+- [ ] Pengaturan cicilan: saklar dan minimal pembayaran tersimpan dan diterapkan
+
+## 8. Mode Gelap dan Lupa Kata Sandi
+
+- [ ] Semua halaman utama tampil rapi pada mode gelap
+- [ ] Kontras teks mencukupi pada Toast, Modal, dan badge status
+- [ ] Lupa kata sandi mengirim tautan dan atur ulang kata sandi berfungsi
+- [ ] Tampilan HP 360 px tidak ada elemen terpotong atau menutupi tombol penting

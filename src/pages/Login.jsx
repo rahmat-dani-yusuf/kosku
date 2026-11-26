@@ -1,7 +1,8 @@
-import { useState } from 'react'
+﻿import { useState } from 'react'
 import { Link, Navigate } from 'react-router-dom'
 import { useProfil } from '../hooks/useProfil.jsx'
 import { useAuth } from '../hooks/useAuth.jsx'
+import InputSandi from '../components/InputSandi.jsx'
 
 function translateError(err) {
   const msg = err?.message || ''
@@ -44,42 +45,41 @@ export default function Login() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-emerald-50 to-teal-100 flex items-center justify-center px-6 py-12">
-      <div className="w-full max-w-sm bg-white/90 backdrop-blur rounded-3xl shadow-2xl p-8 border border-white/40">
+    <div className="min-h-screen bg-gradient-to-br from-emerald-50 to-teal-100 dark:from-gray-950 dark:to-gray-900 flex items-center justify-center px-6 py-12">
+      <div className="w-full max-w-sm bg-white dark:bg-gray-800/90 backdrop-blur rounded-3xl shadow-2xl p-8 border border-white/40 dark:border-gray-700">
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-extrabold text-emerald-800 tracking-tight">Kosku</h1>
-          <p className="text-emerald-600 text-sm mt-1">Masuk ke akun Anda</p>
+          <h1 className="text-3xl font-extrabold text-emerald-800 dark:text-emerald-300 tracking-tight">Kosku</h1>
+          <p className="text-emerald-600 dark:text-gray-300 text-sm mt-1">Masuk ke akun Anda</p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4" noValidate>
           <div>
-            <label htmlFor="email" className="block text-xs font-semibold text-emerald-700 uppercase tracking-wider mb-1">Email</label>
+            <label htmlFor="email" className="block text-xs font-semibold text-emerald-700 dark:text-emerald-300 uppercase tracking-wider mb-1">Email</label>
             <input
               id="email"
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="nama@email.com"
-              className="w-full px-4 py-3 rounded-xl bg-emerald-50/60 border border-emerald-100 text-emerald-900 placeholder:text-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-400 focus:border-transparent transition"
+              className="w-full px-4 py-3 rounded-xl bg-emerald-50/60 dark:bg-gray-900 border border-emerald-100 dark:border-gray-700 text-emerald-900 dark:text-gray-100 placeholder:text-emerald-400 dark:placeholder:text-gray-500 dark:text-gray-400 dark:text-gray-500 focus:outline-none focus:ring-2 focus:ring-emerald-400 focus:border-transparent transition"
               required
             />
           </div>
           <div>
-            <label htmlFor="password" className="block text-xs font-semibold text-emerald-700 uppercase tracking-wider mb-1">Password</label>
-            <input
+            <label htmlFor="password" className="block text-xs font-semibold text-emerald-700 dark:text-emerald-300 uppercase tracking-wider mb-1">Password</label>
+            <InputSandi
               id="password"
-              type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="••••••••"
-              className="w-full px-4 py-3 rounded-xl bg-emerald-50/60 border border-emerald-100 text-emerald-900 placeholder:text-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-400 focus:border-transparent transition"
+              className="w-full px-4 py-3 rounded-xl bg-emerald-50/60 dark:bg-gray-900 border border-emerald-100 dark:border-gray-700 text-emerald-900 dark:text-gray-100 placeholder:text-emerald-400 dark:placeholder:text-gray-500 dark:text-gray-400 dark:text-gray-500 focus:outline-none focus:ring-2 focus:ring-emerald-400 focus:border-transparent transition"
               required
               minLength={6}
             />
           </div>
 
           {error && (
-            <div className="rounded-xl bg-red-50 border border-red-100 text-red-700 text-sm px-4 py-3" role="alert">
+            <div className="rounded-xl bg-red-50 dark:bg-red-900/30 border border-red-100 dark:border-red-800 text-red-700 dark:text-red-200 text-sm px-4 py-3" role="alert">
               {error}
             </div>
           )}
@@ -100,9 +100,13 @@ export default function Login() {
           </button>
         </form>
 
-        <p className="text-center text-sm text-emerald-600 mt-6">
+        <div className="text-center mt-4">
+          <Link to="/lupa-sandi" className="text-sm font-semibold text-emerald-700 dark:text-emerald-300 hover:underline">Lupa kata sandi?</Link>
+        </div>
+
+        <p className="text-center text-sm text-emerald-600 dark:text-gray-300 mt-6">
           Belum punya akun?{' '}
-          <Link to="/daftar" className="font-bold text-emerald-700 hover:underline">Daftar</Link>
+          <Link to="/daftar" className="font-bold text-emerald-700 dark:text-emerald-300 hover:underline">Daftar</Link>
         </p>
       </div>
     </div>

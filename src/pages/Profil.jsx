@@ -6,6 +6,8 @@ import { supabase } from '../lib/supabaseClient.js'
 import { useToast } from '../components/Toast.jsx'
 import { Link } from 'react-router-dom'
 import TombolPasang from '../components/TombolPasang.jsx'
+import InputSandi from '../components/InputSandi.jsx'
+import PemilihTema from '../components/PemilihTema.jsx'
 import ConfirmDialog from '../components/ConfirmDialog.jsx'
 
 export default function Profil() {
@@ -66,55 +68,59 @@ export default function Profil() {
     }
   }
 
-  if (loading) return <div className="min-h-screen flex items-center justify-center bg-emerald-50"><div className="w-10 h-10 border-4 border-emerald-300 border-t-emerald-600 rounded-full animate-spin"/></div>
+  if (loading) return <div className="min-h-screen flex items-center justify-center bg-emerald-50 dark:bg-gray-800/50"><div className="w-10 h-10 border-4 border-emerald-300 border-t-emerald-600 rounded-full animate-spin"/></div>
 
   return (
-    <div className="bg-white/80 backdrop-blur rounded-3xl shadow-xl border border-emerald-100 p-8 md:p-10">
-      <h1 className="text-2xl font-extrabold text-emerald-800 mb-6">Profil</h1>
+    <div className="bg-white dark:bg-gray-800/80 backdrop-blur rounded-3xl shadow-xl border border-emerald-100 dark:border-gray-700 p-8 md:p-10">
+      <h1 className="text-2xl font-extrabold text-emerald-800 dark:text-emerald-300 mb-6">Profil</h1>
       <div className="mb-6"><TombolPasang /></div>
-      <div className="mb-6"><Link to="/pengaturan" className="text-emerald-700 font-semibold underline">Pengaturan Kos</Link></div>
+      <div className="mb-6">
+        <label className="block text-xs font-bold text-emerald-700 dark:text-emerald-300 uppercase tracking-wider mb-2">Tema Tampilan</label>
+        <PemilihTema />
+      </div>
+      <div className="mb-6"><Link to="/pengaturan" className="text-emerald-700 dark:text-emerald-300 font-semibold underline">Pengaturan Kos</Link></div>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
         <div>
-          <label className="block text-xs font-bold text-emerald-700 uppercase tracking-wider mb-1">Nama Pemilik</label>
-          <input value={namaPemilik} onChange={e => setNamaPemilik(e.target.value)} className="w-full px-4 py-3 rounded-xl bg-emerald-50/60 border border-emerald-100 focus:outline-none focus:ring-2 focus:ring-emerald-400" />
+          <label className="block text-xs font-bold text-emerald-700 dark:text-emerald-300 uppercase tracking-wider mb-1">Nama Pemilik</label>
+          <input value={namaPemilik} onChange={e => setNamaPemilik(e.target.value)} className="w-full px-4 py-3 rounded-xl bg-emerald-50/60 dark:bg-gray-900 border border-emerald-100 dark:border-gray-700 focus:outline-none focus:ring-2 focus:ring-emerald-400" />
         </div>
         <div>
-          <label className="block text-xs font-bold text-emerald-700 uppercase tracking-wider mb-1">Nama Kos</label>
-          <input value={namaKos} onChange={e => setNamaKos(e.target.value)} className="w-full px-4 py-3 rounded-xl bg-emerald-50/60 border border-emerald-100 focus:outline-none focus:ring-2 focus:ring-emerald-400" />
+          <label className="block text-xs font-bold text-emerald-700 dark:text-emerald-300 uppercase tracking-wider mb-1">Nama Kos</label>
+          <input value={namaKos} onChange={e => setNamaKos(e.target.value)} className="w-full px-4 py-3 rounded-xl bg-emerald-50/60 dark:bg-gray-900 border border-emerald-100 dark:border-gray-700 focus:outline-none focus:ring-2 focus:ring-emerald-400" />
         </div>
         <div className="md:col-span-2">
-          <label className="block text-xs font-bold text-emerald-700 uppercase tracking-wider mb-1">Alamat</label>
-          <input value={alamat} onChange={e => setAlamat(e.target.value)} className="w-full px-4 py-3 rounded-xl bg-emerald-50/60 border border-emerald-100 focus:outline-none focus:ring-2 focus:ring-emerald-400" />
+          <label className="block text-xs font-bold text-emerald-700 dark:text-emerald-300 uppercase tracking-wider mb-1">Alamat</label>
+          <input value={alamat} onChange={e => setAlamat(e.target.value)} className="w-full px-4 py-3 rounded-xl bg-emerald-50/60 dark:bg-gray-900 border border-emerald-100 dark:border-gray-700 focus:outline-none focus:ring-2 focus:ring-emerald-400" />
         </div>
         <div>
-          <label className="block text-xs font-bold text-emerald-700 uppercase tracking-wider mb-1">Nomor WhatsApp</label>
-          <input value={noWa} autoComplete="off" onChange={e => setNoWa(e.target.value)} className="w-full px-4 py-3 rounded-xl bg-emerald-50/60 border border-emerald-100 focus:outline-none focus:ring-2 focus:ring-emerald-400" placeholder="0812..." />
+          <label className="block text-xs font-bold text-emerald-700 dark:text-emerald-300 uppercase tracking-wider mb-1">Nomor WhatsApp</label>
+          <input value={noWa} autoComplete="off" onChange={e => setNoWa(e.target.value)} className="w-full px-4 py-3 rounded-xl bg-emerald-50/60 dark:bg-gray-900 border border-emerald-100 dark:border-gray-700 focus:outline-none focus:ring-2 focus:ring-emerald-400" placeholder="0812..." />
         </div>
         <div>
-          <label className="block text-xs font-bold text-emerald-700 uppercase tracking-wider mb-1">Email Akun</label>
-          <input value={user?.email || ''} disabled className="w-full px-4 py-3 rounded-xl bg-gray-100 text-gray-500 border border-gray-200" />
+          <label className="block text-xs font-bold text-emerald-700 dark:text-emerald-300 uppercase tracking-wider mb-1">Email Akun</label>
+          <input value={user?.email || ''} disabled className="w-full px-4 py-3 rounded-xl bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 dark:text-gray-500 border border-gray-200 dark:border-gray-700" />
         </div>
       </div>
-      <button onClick={init} className="text-xs text-emerald-600 font-bold mb-6 hover:underline">Reset ke data tersimpan</button>
+      <button onClick={init} className="text-xs text-emerald-600 dark:text-emerald-300 font-bold mb-6 hover:underline">Reset ke data tersimpan</button>
 
       <button onClick={handleSave} disabled={saving} className="w-full py-3 rounded-xl bg-emerald-600 text-white font-bold shadow-lg shadow-emerald-200 hover:bg-emerald-700 transition disabled:opacity-70 mb-6">Simpan Profil</button>
 
-      <div className="border-t border-emerald-100 pt-6 mb-6">
-        <h2 className="text-lg font-extrabold text-emerald-800 mb-3">Ubah Kata Sandi</h2>
+      <div className="border-t border-emerald-100 dark:border-gray-700 pt-6 mb-6">
+        <h2 className="text-lg font-extrabold text-emerald-800 dark:text-emerald-300 mb-3">Ubah Kata Sandi</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
           <div>
-            <label className="block text-xs font-bold text-emerald-700 uppercase tracking-wider mb-1">Kata Sandi Baru</label>
-            <input type="password" autoComplete="new-password" value={pwBaru} onChange={e => setPwBaru(e.target.value)} className="w-full px-4 py-3 rounded-xl bg-emerald-50/60 border border-emerald-100 focus:outline-none focus:ring-2 focus:ring-emerald-400" />
+            <label className="block text-xs font-bold text-emerald-700 dark:text-emerald-300 uppercase tracking-wider mb-1">Kata Sandi Baru</label>
+            <InputSandi autoComplete="new-password" value={pwBaru} onChange={e => setPwBaru(e.target.value)} className="w-full px-4 py-3 rounded-xl bg-emerald-50/60 dark:bg-gray-900 border border-emerald-100 dark:border-gray-700 focus:outline-none focus:ring-2 focus:ring-emerald-400" />
           </div>
           <div>
-            <label className="block text-xs font-bold text-emerald-700 uppercase tracking-wider mb-1">Konfirmasi</label>
-            <input type="password" autoComplete="new-password" value={pwKonf} onChange={e => setPwKonf(e.target.value)} className="w-full px-4 py-3 rounded-xl bg-emerald-50/60 border border-emerald-100 focus:outline-none focus:ring-2 focus:ring-emerald-400" />
+            <label className="block text-xs font-bold text-emerald-700 dark:text-emerald-300 uppercase tracking-wider mb-1">Konfirmasi</label>
+            <InputSandi autoComplete="new-password" value={pwKonf} onChange={e => setPwKonf(e.target.value)} className="w-full px-4 py-3 rounded-xl bg-emerald-50/60 dark:bg-gray-900 border border-emerald-100 dark:border-gray-700 focus:outline-none focus:ring-2 focus:ring-emerald-400" />
           </div>
         </div>
         <button onClick={handlePassword} className="w-full py-3 rounded-xl bg-emerald-600 text-white font-bold shadow-lg shadow-emerald-200 hover:bg-emerald-700 transition">Ubah Kata Sandi</button>
       </div>
 
-      <button onClick={() => setOpenConfirm(true)} className="w-full py-3 rounded-xl bg-red-50 text-red-700 font-bold border border-red-100 hover:bg-red-100 transition">Keluar</button>
+      <button onClick={() => setOpenConfirm(true)} className="w-full py-3 rounded-xl bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-200 font-bold border border-red-100 dark:border-red-800 hover:bg-red-100 transition">Keluar</button>
       <ConfirmDialog open={openConfirm} title="Keluar" message="Anda yakin ingin keluar?" onConfirm={() => { setOpenConfirm(false); signOut() }} onCancel={() => setOpenConfirm(false)} />
     </div>
   )

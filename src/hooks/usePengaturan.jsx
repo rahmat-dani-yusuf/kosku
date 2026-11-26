@@ -13,6 +13,8 @@ export function usePengaturan() {
     deposit_default: 0,
     aturan_kos: '',
     info_pembayaran: '',
+    izinkan_cicilan: true,
+    cicilan_minimum: 0,
   })
   const [loading, setLoading] = useState(true)
 
@@ -34,9 +36,11 @@ export function usePengaturan() {
           deposit_default: data.deposit_default ?? 0,
           aturan_kos: data.aturan_kos || '',
           info_pembayaran: data.info_pembayaran || '',
+          izinkan_cicilan: data.izinkan_cicilan ?? true,
+          cicilan_minimum: data.cicilan_minimum ?? 0,
         })
       } else {
-        setPengaturan({ denda_per_hari: 0, masa_tenggang_hari: 0, hari_tagih_default: 1, deposit_default: 0, aturan_kos: '', info_pembayaran: '' })
+        setPengaturan({ denda_per_hari: 0, masa_tenggang_hari: 0, hari_tagih_default: 1, deposit_default: 0, aturan_kos: '', info_pembayaran: '', izinkan_cicilan: true, cicilan_minimum: 0 })
       }
     } catch (e) {
       // default values already set
@@ -58,6 +62,8 @@ export function usePengaturan() {
         deposit_default: Number(values.deposit_default) || 0,
         aturan_kos: String(values.aturan_kos || ''),
         info_pembayaran: String(values.info_pembayaran || ''),
+        izinkan_cicilan: values.izinkan_cicilan !== undefined ? !!values.izinkan_cicilan : (pengaturan.izinkan_cicilan ?? true),
+        cicilan_minimum: values.cicilan_minimum !== undefined ? (Number(values.cicilan_minimum) || 0) : (pengaturan.cicilan_minimum ?? 0),
         updated_at: new Date().toISOString(),
       }
       const { error } = await supabase.from('pengaturan_kos').upsert(payload, { onConflict: 'user_id' })
@@ -69,7 +75,7 @@ export function usePengaturan() {
       show(e.message || 'Gagal menyimpan pengaturan', 'error')
       return false
     }
-  }, [user, show])
+  }, [user, show, pengaturan])
 
   return { pengaturan, loading, reload, simpan }
 }

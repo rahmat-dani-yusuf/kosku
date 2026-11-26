@@ -4,6 +4,7 @@ import { useAuth } from './useAuth.jsx'
 import { useToast } from '../components/Toast.jsx'
 import { dengarDataBerubah, umumkanDataBerubah } from '../lib/events.js'
 import { hitungRange } from '../lib/paginasi.js'
+import { formatRupiah } from '../lib/format.js'
 
 const SELECT_TAGIHAN = '*, sewa:sewa_id(kamar_id, penghuni_id, kamar:kamar_id(nomor), penghuni:penghuni_id(nama,no_hp))'
 
@@ -20,7 +21,7 @@ async function ambilRingkasan(userId, periode, hari) {
   for (let dari = 0; dari < 20000; dari += 1000) {
     const { data, error } = await supabase
       .from('tagihan')
-      .select('status,jumlah,denda,jatuh_tempo')
+      .select('status,jumlah,denda,jatuh_tempo,terbayar')
       .eq('user_id', userId)
       .eq('periode', periode)
       .order('id')
@@ -35,12 +36,12 @@ async function ambilRingkasan(userId, periode, hari) {
   const hasil = { total: 0, lunas: 0, nominalLunas: 0, belum: 0, nominalBelum: 0, terlambat: 0 }
   for (const t of semua) {
     hasil.total += 1
+    hasil.nominalLunas += Number(t.terbayar || 0)
     if (t.status === 'lunas') {
       hasil.lunas += 1
-      hasil.nominalLunas += Number(t.jumlah || 0) + Number(t.denda || 0)
     } else if (t.status === 'belum') {
       hasil.belum += 1
-      hasil.nominalBelum += Number(t.jumlah || 0)
+      hasil.nominalBelum += Number(t.jumlah || 0) - Number(t.terbayar || 0)
       if ((t.jatuh_tempo || '') < hari) hasil.terlambat += 1
     }
   }
@@ -168,35 +169,77 @@ export function useTagihanHalaman({ halaman = 1, perHalaman = 10, periode, statu
 
   const tandaiLunas = useCallback(async (id, tanggalBayar, metode, denda = 0) => {
     try {
-      const { error: err } = await supabase
+      const { data: t, error: e } = await supabase
         .from('tagihan')
-        .update({ status: 'lunas', tanggal_bayar: tanggalBayar, metode, denda: Number(denda) || 0 })
+        .select('jumlah,terbayar')
         .eq('id', id).eq('user_id', user.id)
+        .single()
+      if (e) throw e
+      const sisa = Number(t?.jumlah || 0) + Number(denda || 0) - Number(t?.terbayar || 0)
+      const { data: res, error: err } = await supabase.rpc('catat_pembayaran', {
+        p_tagihan: id,
+        p_jumlah: sisa,
+        p_tanggal: tanggalBayar,
+        p_metode: metode,
+        p_denda: Number(denda) || 0,
+      })
       if (err) throw err
       umumkanDataBerubah()
       show('Tagihan ditandai lunas', 'success')
-      return true
+      return res || true
     } catch (e) {
-      show(e.message || 'Gagal menandai lunas', 'error')
+      show(e?.message || 'Gagal menandai lunas', 'error')
       return false
     }
   }, [user, show])
 
+  const catatPembayaran = useCallback(async (tagihanId, { jumlah, tanggal, metode, denda = 0, catatan = null } = {}) => {
+    try {
+      const { data: res, error: err } = await supabase.rpc('catat_pembayaran', {
+        p_tagihan: tagihanId,
+        p_jumlah: Number(jumlah) || 0,
+        p_tanggal: tanggal,
+        p_metode: metode,
+        p_denda: Number(denda) || 0,
+        p_catatan: catatan && String(catatan).trim() ? String(catatan).trim() : null,
+      })
+      if (err) throw err
+      umumkanDataBerubah()
+      const obj = (Array.isArray(res) ? res[0] : res) || {}
+      if (obj.lunas) show('Tagihan lunas', 'success')
+      else show(`Pembayaran ${formatRupiah(Number(jumlah) || 0)} dicatat, sisa ${formatRupiah(obj.sisa)}`, 'success')
+      return obj
+    } catch (e) {
+      show(e?.message || 'Gagal mencatat pembayaran', 'error')
+      return null
+    }
+  }, [show])
+
+  const batalkanPembayaran = useCallback(async (pembayaranId) => {
+    try {
+      const { error: err } = await supabase.rpc('batalkan_pembayaran', { p_pembayaran: pembayaranId })
+      if (err) throw err
+      umumkanDataBerubah()
+      show('Pembayaran dihapus', 'success')
+      return true
+    } catch (e) {
+      show(e?.message || 'Gagal menghapus pembayaran', 'error')
+      return false
+    }
+  }, [show])
+
   const batalkanLunas = useCallback(async (id) => {
     try {
-      const { error: err } = await supabase
-        .from('tagihan')
-        .update({ status: 'belum', tanggal_bayar: null, metode: null, denda: 0 })
-        .eq('id', id).eq('user_id', user.id)
+      const { error: err } = await supabase.rpc('reset_pembayaran', { p_tagihan: id })
       if (err) throw err
       umumkanDataBerubah()
       show('Tagihan dibatalkan', 'success')
       return true
     } catch (e) {
-      show(e.message || 'Gagal membatalkan', 'error')
+      show(e?.message || 'Gagal membatalkan', 'error')
       return false
     }
-  }, [user, show])
+  }, [show])
 
-  return { data, total, ringkasan, loading, error, muatUlang, buatTagihan, tandaiLunas, batalkanLunas }
+  return { data, total, ringkasan, loading, error, muatUlang, buatTagihan, tandaiLunas, catatPembayaran, batalkanPembayaran, batalkanLunas }
 }

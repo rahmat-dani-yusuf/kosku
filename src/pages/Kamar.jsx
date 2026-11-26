@@ -172,13 +172,13 @@ export default function Kamar() {
     setConfirmOpen(false)
   }
 
-  const statusColor = (s) => s === 'kosong' ? 'bg-emerald-100 text-emerald-800 border-emerald-200' : s === 'terisi' ? 'bg-blue-100 text-blue-800 border-blue-200' : 'bg-amber-100 text-amber-800 border-amber-200'
+  const statusColor = (s) => s === 'kosong' ? 'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-800 dark:text-emerald-300 border-emerald-200 dark:border-gray-700' : s === 'terisi' ? 'bg-blue-100 text-blue-800 border-blue-200' : 'bg-amber-100 text-amber-800 dark:text-amber-200 border-amber-200 dark:border-amber-800'
   const statusLabel = (s) => s === 'kosong' ? 'Kosong' : s === 'terisi' ? 'Terisi' : 'Perbaikan'
 
   return (
     <div>
       <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-extrabold text-emerald-800">Kamar</h1>
+        <h1 className="text-2xl font-extrabold text-emerald-800 dark:text-emerald-300">Kamar</h1>
         <button onClick={openAdd} className="px-4 py-2.5 rounded-xl bg-emerald-600 text-white font-bold shadow-lg shadow-emerald-200 transition hover:bg-emerald-700">+ Tambah Kamar</button>
       </div>
 
@@ -186,9 +186,9 @@ export default function Kamar() {
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
         {[
           { label: 'Total', val: counts.total, bg: 'bg-emerald-600 text-white' },
-          { label: 'Kosong', val: counts.kosong, bg: 'bg-emerald-50 text-emerald-700 border border-emerald-100' },
+          { label: 'Kosong', val: counts.kosong, bg: 'bg-emerald-50 dark:bg-gray-800/50 text-emerald-700 dark:text-emerald-300 border border-emerald-100 dark:border-gray-700' },
           { label: 'Terisi', val: counts.terisi, bg: 'bg-blue-50 text-blue-700 border border-blue-100' },
-          { label: 'Perbaikan', val: counts.perbaikan, bg: 'bg-amber-50 text-amber-700 border border-amber-100' },
+          { label: 'Perbaikan', val: counts.perbaikan, bg: 'bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-200 border border-amber-100 dark:border-amber-800' },
         ].map(s => (
           <div key={s.label} className={`rounded-2xl p-4 shadow-sm ${s.bg}`}>
             <div className="text-xs font-semibold opacity-80">{s.label}</div>
@@ -203,12 +203,12 @@ export default function Kamar() {
           value={teksCari}
           onChange={e => setTeksCari(e.target.value)}
           placeholder="Cari nomor atau tipe kamar..."
-          className="flex-1 px-4 py-3 rounded-xl bg-emerald-50/60 border border-emerald-100 focus:outline-none focus:ring-2 focus:ring-emerald-400"
+          className="flex-1 px-4 py-3 rounded-xl bg-emerald-50/60 dark:bg-gray-900 border border-emerald-100 dark:border-gray-700 focus:outline-none focus:ring-2 focus:ring-emerald-400"
         />
         <select
           value={status}
           onChange={e => setStatus(e.target.value)}
-          className="px-4 py-3 rounded-xl bg-emerald-50/60 border border-emerald-100 font-semibold text-emerald-800 focus:outline-none focus:ring-2 focus:ring-emerald-400"
+          className="px-4 py-3 rounded-xl bg-emerald-50/60 dark:bg-gray-900 border border-emerald-100 dark:border-gray-700 font-semibold text-emerald-800 dark:text-emerald-300 focus:outline-none focus:ring-2 focus:ring-emerald-400"
         >
           <option value="semua">Semua status</option>
           <option value="kosong">Kosong</option>
@@ -217,8 +217,8 @@ export default function Kamar() {
         </select>
       </div>
 
-      {loading && <div className="text-center py-8 text-emerald-500">Memuat...</div>}
-      {error && <div className="rounded-xl bg-red-50 border border-red-100 text-red-700 px-4 py-3 mb-4">{error}</div>}
+      {loading && <div className="text-center py-8 text-emerald-500 dark:text-emerald-400 dark:text-emerald-300">Memuat...</div>}
+      {error && <div className="rounded-xl bg-red-50 dark:bg-red-900/30 border border-red-100 dark:border-red-800 text-red-700 dark:text-red-200 px-4 py-3 mb-4">{error}</div>}
 
       {!loading && total === 0 && (cari || status !== 'semua'
         ? <EmptyState title="Tidak ada kamar yang cocok" desc="Coba ubah kata kunci atau filter." />
@@ -226,20 +226,20 @@ export default function Kamar() {
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {kamarList.map(k => (
-          <div key={k.id} className={`rounded-3xl border shadow-lg bg-white/80 backdrop-blur p-5 transition hover:shadow-xl ${statusColor(k.status)} border-opacity-60`}>
+          <div key={k.id} className={`rounded-3xl border shadow-lg bg-white dark:bg-gray-800/80 backdrop-blur p-5 transition hover:shadow-xl ${statusColor(k.status)} border-opacity-60`}>
             <div className="flex items-start justify-between mb-2">
               <div className="font-extrabold text-xl">No. {k.nomor}</div>
               <span className={`text-xs font-bold px-2.5 py-0.5 rounded-full border ${statusColor(k.status)}`}>{statusLabel(k.status)}</span>
             </div>
-            <div className="text-sm text-emerald-600 mb-1">{k.tipe || '-'}</div>
-            <div className="text-lg font-bold text-emerald-800 mb-1">{formatRupiah(k.harga_bulanan)}<span className="text-xs font-normal text-emerald-400">/bulan</span></div>
-            <div className="text-sm text-emerald-500 mb-2">Fasilitas: {k.fasilitas || '-'}</div>
+            <div className="text-sm text-emerald-600 dark:text-emerald-300 mb-1">{k.tipe || '-'}</div>
+            <div className="text-lg font-bold text-emerald-800 dark:text-emerald-300 mb-1">{formatRupiah(k.harga_bulanan)}<span className="text-xs font-normal text-emerald-400 dark:text-emerald-300">/bulan</span></div>
+            <div className="text-sm text-emerald-500 dark:text-emerald-400 dark:text-emerald-300 mb-2">Fasilitas: {k.fasilitas || '-'}</div>
             {k.status === 'terisi' && tenants[k.id] && (
               <div className="text-sm font-medium text-blue-700 bg-blue-50 rounded-xl px-3 py-2 mb-3 border border-blue-100">Penghuni aktif: {tenants[k.id]}</div>
             )}
             <div className="flex gap-2 mt-3">
               <button onClick={() => openEdit(k)} className="flex-1 py-2 rounded-xl bg-emerald-600 text-white text-sm font-bold hover:bg-emerald-700 transition">Ubah</button>
-              <button onClick={() => openDelete(k)} className="flex-1 py-2 rounded-xl bg-red-50 text-red-600 text-sm font-bold hover:bg-red-100 transition">Hapus</button>
+              <button onClick={() => openDelete(k)} className="flex-1 py-2 rounded-xl bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-300 text-sm font-bold hover:bg-red-100 transition">Hapus</button>
             </div>
           </div>
         ))}
@@ -257,28 +257,28 @@ export default function Kamar() {
       <Modal open={modalOpen} onClose={() => setModalOpen(false)} title={editId ? 'Ubah Kamar' : 'Tambah Kamar'}>
         <div className="space-y-3">
           <div>
-            <label className="block text-xs font-bold text-emerald-700 uppercase tracking-wider mb-1">Nomor <span className="text-red-500">*</span></label>
-            <input value={form.nomor} onChange={e => setForm({ ...form, nomor: e.target.value })} className="w-full px-4 py-3 rounded-xl bg-emerald-50/60 border border-emerald-100 focus:outline-none focus:ring-2 focus:ring-emerald-400" placeholder="Contoh: 101" required />
+            <label className="block text-xs font-bold text-emerald-700 dark:text-emerald-300 uppercase tracking-wider mb-1">Nomor <span className="text-red-500">*</span></label>
+            <input value={form.nomor} onChange={e => setForm({ ...form, nomor: e.target.value })} className="w-full px-4 py-3 rounded-xl bg-emerald-50/60 dark:bg-gray-900 border border-emerald-100 dark:border-gray-700 focus:outline-none focus:ring-2 focus:ring-emerald-400" placeholder="Contoh: 101" required />
           </div>
           <div>
-            <label className="block text-xs font-bold text-emerald-700 uppercase tracking-wider mb-1">Tipe</label>
-            <input value={form.tipe} onChange={e => setForm({ ...form, tipe: e.target.value })} className="w-full px-4 py-3 rounded-xl bg-emerald-50/60 border border-emerald-100 focus:outline-none focus:ring-2 focus:ring-emerald-400" placeholder="Contoh: Kamar mandi dalam" />
+            <label className="block text-xs font-bold text-emerald-700 dark:text-emerald-300 uppercase tracking-wider mb-1">Tipe</label>
+            <input value={form.tipe} onChange={e => setForm({ ...form, tipe: e.target.value })} className="w-full px-4 py-3 rounded-xl bg-emerald-50/60 dark:bg-gray-900 border border-emerald-100 dark:border-gray-700 focus:outline-none focus:ring-2 focus:ring-emerald-400" placeholder="Contoh: Kamar mandi dalam" />
           </div>
           <div>
-            <label className="block text-xs font-bold text-emerald-700 uppercase tracking-wider mb-1">Harga Bulanan <span className="text-red-500">*</span></label>
+            <label className="block text-xs font-bold text-emerald-700 dark:text-emerald-300 uppercase tracking-wider mb-1">Harga Bulanan <span className="text-red-500">*</span></label>
             <input type="text" value={form.harga_bulanan} onChange={e => {
               const raw = e.target.value.replace(/[^0-9]/g, '')
               const num = Number(raw) || 0
               setForm({ ...form, harga_bulanan: num ? num.toLocaleString('id-ID', { maximumFractionDigits: 0 }) : '' })
-            }} className="w-full px-4 py-3 rounded-xl bg-emerald-50/60 border border-emerald-100 focus:outline-none focus:ring-2 focus:ring-emerald-400" placeholder="1500000" />
+            }} className="w-full px-4 py-3 rounded-xl bg-emerald-50/60 dark:bg-gray-900 border border-emerald-100 dark:border-gray-700 focus:outline-none focus:ring-2 focus:ring-emerald-400" placeholder="1500000" />
           </div>
           <div>
-            <label className="block text-xs font-bold text-emerald-700 uppercase tracking-wider mb-1">Fasilitas</label>
-            <input value={form.fasilitas} onChange={e => setForm({ ...form, fasilitas: e.target.value })} className="w-full px-4 py-3 rounded-xl bg-emerald-50/60 border border-emerald-100 focus:outline-none focus:ring-2 focus:ring-emerald-400" placeholder="AC, WiFi, TV" />
+            <label className="block text-xs font-bold text-emerald-700 dark:text-emerald-300 uppercase tracking-wider mb-1">Fasilitas</label>
+            <input value={form.fasilitas} onChange={e => setForm({ ...form, fasilitas: e.target.value })} className="w-full px-4 py-3 rounded-xl bg-emerald-50/60 dark:bg-gray-900 border border-emerald-100 dark:border-gray-700 focus:outline-none focus:ring-2 focus:ring-emerald-400" placeholder="AC, WiFi, TV" />
           </div>
           <div>
-            <label className="block text-xs font-bold text-emerald-700 uppercase tracking-wider mb-1">Status</label>
-            <select value={form.status} onChange={e => setForm({ ...form, status: e.target.value })} className="w-full px-4 py-3 rounded-xl bg-emerald-50/60 border border-emerald-100 focus:outline-none focus:ring-2 focus:ring-emerald-400">
+            <label className="block text-xs font-bold text-emerald-700 dark:text-emerald-300 uppercase tracking-wider mb-1">Status</label>
+            <select value={form.status} onChange={e => setForm({ ...form, status: e.target.value })} className="w-full px-4 py-3 rounded-xl bg-emerald-50/60 dark:bg-gray-900 border border-emerald-100 dark:border-gray-700 focus:outline-none focus:ring-2 focus:ring-emerald-400">
               <option value="kosong">Kosong</option>
               <option value="perbaikan">Perbaikan</option>
             </select>

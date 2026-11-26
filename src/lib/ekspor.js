@@ -1,6 +1,6 @@
 import { formatRupiah, formatTanggal, formatPeriode } from './format.js'
 
-export async function unduhLaporanPdf({ periode, tagihan, kamar, profil, ringkasan }) {
+export async function unduhLaporanPdf({ periode, tagihan, kamar, profil, ringkasan, pembayaran }) {
   const [{ jsPDF }, { default: autoTable }] = await Promise.all([
     import('jspdf'),
     import('jspdf-autotable'),
@@ -28,12 +28,13 @@ export async function unduhLaporanPdf({ periode, tagihan, kamar, profil, ringkas
     startY: 36,
     head: [['Item', 'Jumlah', 'Nominal']],
     body: [
-      ['Total Tagihan', String(ringkasan.total || 0), formatRupiah(ringkasan.totalLunas + ringkasan.totalBelum + ringkasan.totalTerlambat || 0)],
-      ['Lunas', String(ringkasan.lunas || 0), formatRupiah(ringkasan.totalLunas || 0)],
-      ['Belum Bayar', String(ringkasan.belum || 0), formatRupiah(ringkasan.totalBelum || 0)],
-      ['Terlambat', String(ringkasan.terlambat || 0), formatRupiah(ringkasan.totalTerlambat || 0)],
+      ['Tagihan Diterbitkan', '', formatRupiah(ringkasan.tagihanDiterbitkan || 0)],
+      ['Uang Masuk', '', formatRupiah(ringkasan.uangMasuk || 0)],
+      ['Sisa Belum Bayar', '', formatRupiah(ringkasan.sisaBelumBayar || 0)],
+      ['Denda Diterima', '', formatRupiah(ringkasan.dendaDiterima || 0)],
+      ['Tingkat Penagihan', `${ringkasan.persenBayar || 0}%`, ''],
+      ['Lunas / Belum / Terlambat', `${ringkasan.lunas || 0} / ${ringkasan.belum || 0} / ${ringkasan.terlambat || 0}`, ''],
       ['Kamar Terisi / Total', `${ringkasan.kamarTerisi || 0} / ${ringkasan.kamarTotal || 0}`, ''],
-      ['Persentase Terbayar', `${ringkasan.persenBayar || 0}%`, ''],
     ],
     theme: 'striped',
     headStyles: { fillColor: [16, 185, 129], textColor: 255, fontStyle: 'bold' },
@@ -44,16 +45,16 @@ export async function unduhLaporanPdf({ periode, tagihan, kamar, profil, ringkas
   doc.text('Rincian Tagihan', 14, (doc.lastAutoTable?.finalY || 70) + 6)
   autoTable(doc, {
     startY: (doc.lastAutoTable?.finalY || 70) + 8,
-    head: [['Kamar', 'Penghuni', 'Jumlah', 'Denda', 'Jatuh Tempo', 'Status', 'Tanggal Bayar', 'Metode']],
+    head: [['Kamar', 'Penghuni', 'Jumlah', 'Terbayar', 'Sisa', 'Denda', 'Jatuh Tempo', 'Status']],
     body: (tagihan || []).map(t => [
       t.sewa?.kamar?.nomor || '-',
       t.sewa?.penghuni?.nama || '-',
       formatRupiah(t.jumlah || 0),
+      formatRupiah(t.terbayar || 0),
+      formatRupiah(Number(t.jumlah || 0) - Number(t.terbayar || 0)),
       formatRupiah(t.denda || 0),
       formatTanggal(t.jatuh_tempo) || '-',
-      t.status === 'lunas' ? 'Lunas' : t.status === 'belum' && (t.jatuh_tempo || '') < new Date().toISOString().split('T')[0] ? 'Terlambat' : 'Belum bayar',
-      t.tanggal_bayar ? formatTanggal(t.tanggal_bayar) : '-',
-      t.metode ? (t.metode.charAt(0).toUpperCase() + t.metode.slice(1)) : '-',
+      t.status === 'lunas' ? 'Lunas' : Number(t.terbayar || 0) > 0 ? 'Dicicil' : t.status === 'belum' && (t.jatuh_tempo || '') < new Date().toISOString().split('T')[0] ? 'Terlambat' : 'Belum bayar',
     ]),
     theme: 'grid',
     headStyles: { fillColor: [16, 185, 129], textColor: 255, fontStyle: 'bold' },
@@ -80,26 +81,51 @@ export async function unduhLaporanPdf({ periode, tagihan, kamar, profil, ringkas
     })
   }
 
+  if ((pembayaran || []).length) {
+    doc.text('Riwayat Pembayaran', 14, (doc.lastAutoTable?.finalY || 120) + 6)
+    autoTable(doc, {
+      startY: (doc.lastAutoTable?.finalY || 120) + 8,
+      head: [['No', 'Tanggal', 'Kamar', 'Penghuni', 'Metode', 'Jumlah']],
+      body: (pembayaran || []).map((p, idx) => [
+        String(idx + 1),
+        formatTanggal(p.tanggal) || '-',
+        p.tagihan?.sewa?.kamar?.nomor || '-',
+        p.tagihan?.sewa?.penghuni?.nama || '-',
+        p.metode ? (p.metode.charAt(0).toUpperCase() + p.metode.slice(1)) : '-',
+        formatRupiah(p.jumlah || 0),
+      ]),
+      theme: 'grid',
+      headStyles: { fillColor: [16, 185, 129], textColor: 255, fontStyle: 'bold' },
+      styles: { fontSize: 8, cellPadding: 2 }
+    })
+  }
+
   doc.save(`laporan-kosku-${new Date(periode).getFullYear()}-${String(new Date(periode).getMonth() + 1).padStart(2, '0')}.pdf`)
 }
 
-export async function unduhLaporanExcel({ periode, tagihan, kamar, penghuni, profil }) {
+export async function unduhLaporanExcel({ periode, tagihan, kamar, penghuni, profil, pembayaran, ringkasan }) {
   const XLSX = await import('xlsx')
   const wb = XLSX.utils.book_new()
 
   // Ringkasan
-  const totalTagihan = tagihan.length
   const lunas = tagihan.filter(t => t.status === 'lunas')
   const belum = tagihan.filter(t => t.status === 'belum')
-  const terlambat = belum.filter(t => (t.jatuh_tempo || '') < new Date().toISOString().split('T')[0])
+  const todayStr = new Date().toISOString().split('T')[0]
+  const terlambat = belum.filter(t => (t.jatuh_tempo || '') < todayStr)
+  const tagihanDiterbitkan = (ringkasan && ringkasan.tagihanDiterbitkan != null) ? ringkasan.tagihanDiterbitkan : tagihan.reduce((s, t) => s + Number(t.jumlah || 0), 0)
+  const uangMasuk = (ringkasan && ringkasan.uangMasuk != null) ? ringkasan.uangMasuk : (pembayaran || []).reduce((s, p) => s + Number(p.jumlah || 0), 0)
+  const sisaBelumBayar = (ringkasan && ringkasan.sisaBelumBayar != null) ? ringkasan.sisaBelumBayar : belum.reduce((s, t) => s + (Number(t.jumlah || 0) - Number(t.terbayar || 0)), 0)
+  const dendaDiterima = (ringkasan && ringkasan.dendaDiterima != null) ? ringkasan.dendaDiterima : lunas.reduce((s, t) => s + Number(t.denda || 0), 0)
+  const persenBayar = tagihanDiterbitkan ? Math.min(100, Math.round((uangMasuk / tagihanDiterbitkan) * 100)) : 0
   const ringkasanData = [
     ['Item', 'Jumlah', 'Nominal'],
-    ['Total Tagihan', totalTagihan, totalTagihan ? tagihan.reduce((s, t) => s + (t.jumlah || 0), 0) : 0],
-    ['Lunas', lunas.length, lunas.reduce((s, t) => s + (t.jumlah || 0), 0)],
-    ['Belum Bayar', belum.length, belum.reduce((s, t) => s + (t.jumlah || 0), 0)],
-    ['Terlambat', terlambat.length, terlambat.reduce((s, t) => s + (t.jumlah || 0), 0)],
-    ['Kamar Terisi', kamar.filter(k => k.status === 'terisi').length, ''],
-    ['Persentase Terbayar', totalTagihan ? Math.round((lunas.length / totalTagihan) * 100) + '%' : '0%', ''],
+    ['Tagihan Diterbitkan', tagihan.length, tagihanDiterbitkan],
+    ['Uang Masuk', (pembayaran || []).length, uangMasuk],
+    ['Sisa Belum Bayar', belum.length, sisaBelumBayar],
+    ['Denda Diterima', lunas.length, dendaDiterima],
+    ['Tingkat Penagihan', persenBayar + '%', ''],
+    ['Lunas / Belum / Terlambat', `${lunas.length} / ${belum.length} / ${terlambat.length}`, ''],
+    ['Kamar Terisi / Total', `${kamar.filter(k => k.status === 'terisi').length} / ${kamar.length}`, ''],
   ]
   const wsRingkasan = XLSX.utils.aoa_to_sheet(ringkasanData)
   wsRingkasan['!cols'] = [{ wch: 20 }, { wch: 15 }, { wch: 20 }]
@@ -107,27 +133,47 @@ export async function unduhLaporanExcel({ periode, tagihan, kamar, penghuni, pro
 
   // Tagihan
   const tagihanData = [[
-    'Kamar', 'Penghuni', 'Jumlah', 'Denda', 'Jatuh Tempo', 'Status', 'Tanggal Bayar', 'Metode'
+    'Kamar', 'Penghuni', 'Jumlah', 'Terbayar', 'Sisa', 'Denda', 'Jatuh Tempo', 'Status', 'Tanggal Bayar', 'Metode'
   ], ...tagihan.map(t => [
     t.sewa?.kamar?.nomor || '-',
     t.sewa?.penghuni?.nama || '-',
     t.jumlah || 0,
+    t.terbayar || 0,
+    Number(t.jumlah || 0) - Number(t.terbayar || 0),
     t.denda || 0,
     t.jatuh_tempo || '-',
-    t.status === 'lunas' ? 'Lunas' : t.status === 'belum' && (t.jatuh_tempo || '') < new Date().toISOString().split('T')[0] ? 'Terlambat' : 'Belum bayar',
+    t.status === 'lunas' ? 'Lunas' : Number(t.terbayar || 0) > 0 ? 'Dicicil' : t.status === 'belum' && (t.jatuh_tempo || '') < new Date().toISOString().split('T')[0] ? 'Terlambat' : 'Belum bayar',
     t.tanggal_bayar || '-',
     t.metode ? t.metode.charAt(0).toUpperCase() + t.metode.slice(1) : '-',
   ])]
   const wsTagihan = XLSX.utils.aoa_to_sheet(tagihanData)
-  wsTagihan['!cols'] = [{ wch: 10 }, { wch: 20 }, { wch: 15 }, { wch: 15 }, { wch: 15 }, { wch: 15 }, { wch: 15 }, { wch: 12 }]
-  // Make jumlah column number format
+  wsTagihan['!cols'] = [{ wch: 10 }, { wch: 20 }, { wch: 15 }, { wch: 15 }, { wch: 15 }, { wch: 15 }, { wch: 15 }, { wch: 12 }, { wch: 15 }, { wch: 12 }]
   for (let i = 2; i < tagihanData.length; i++) {
-    const c = wsTagihan[`C${i}`]
-    if (c) c.z = '#,##0'
-    const d = wsTagihan[`D${i}`]
-    if (d) d.z = '#,##0'
+    for (const col of ['C', 'D', 'E', 'F']) {
+      const cell = wsTagihan[`${col}${i}`]
+      if (cell) cell.z = '#,##0'
+    }
   }
   XLSX.utils.book_append_sheet(wb, wsTagihan, 'Tagihan')
+
+  // Pembayaran
+  const pembayaranData = [[
+    'No', 'Tanggal', 'Kamar', 'Penghuni', 'Metode', 'Jumlah'
+  ], ...(pembayaran || []).map((p, idx) => [
+    idx + 1,
+    p.tanggal || '-',
+    p.tagihan?.sewa?.kamar?.nomor || '-',
+    p.tagihan?.sewa?.penghuni?.nama || '-',
+    p.metode ? p.metode.charAt(0).toUpperCase() + p.metode.slice(1) : '-',
+    p.jumlah || 0,
+  ])]
+  const wsPembayaran = XLSX.utils.aoa_to_sheet(pembayaranData)
+  wsPembayaran['!cols'] = [{ wch: 6 }, { wch: 14 }, { wch: 10 }, { wch: 20 }, { wch: 12 }, { wch: 15 }]
+  for (let i = 2; i < pembayaranData.length; i++) {
+    const cell = wsPembayaran[`F${i}`]
+    if (cell) cell.z = '#,##0'
+  }
+  XLSX.utils.book_append_sheet(wb, wsPembayaran, 'Riwayat Pembayaran')
 
   // Kamar
   const kamarData = [[

@@ -15,6 +15,8 @@ export default function Pengaturan() {
   const [depositStr, setDepositStr] = useState('')
   const [aturan, setAturan] = useState('')
   const [infoPembayaran, setInfoPembayaran] = useState('')
+  const [izinkanCicilan, setIzinkanCicilan] = useState(true)
+  const [cicilanMinimumStr, setCicilanMinimumStr] = useState('Rp 0')
   const [saving, setSaving] = useState(false)
 
   useEffect(() => {
@@ -24,6 +26,8 @@ export default function Pengaturan() {
     setDepositStr(formatRupiah(pengaturan.deposit_default))
     setAturan(pengaturan.aturan_kos)
     setInfoPembayaran(pengaturan.info_pembayaran)
+    setIzinkanCicilan(pengaturan.izinkan_cicilan ?? true)
+    setCicilanMinimumStr(formatRupiah(pengaturan.cicilan_minimum ?? 0))
   }, [pengaturan])
 
   const handleSave = async () => {
@@ -37,51 +41,71 @@ export default function Pengaturan() {
       deposit_default: parseRupiah(depositStr),
       aturan_kos: aturan.trim(),
       info_pembayaran: infoPembayaran.trim(),
+      izinkan_cicilan: izinkanCicilan,
+      cicilan_minimum: parseRupiah(cicilanMinimumStr),
     })
     setSaving(false)
   }
 
-  if (loading) return <div className="min-h-screen flex items-center justify-center bg-emerald-50"><div className="w-10 h-10 border-4 border-emerald-300 border-t-emerald-600 rounded-full animate-spin" /></div>
+  if (loading) return <div className="min-h-screen flex items-center justify-center bg-emerald-50 dark:bg-gray-800/50"><div className="w-10 h-10 border-4 border-emerald-300 border-t-emerald-600 rounded-full animate-spin" /></div>
 
   return (
-    <div className="max-w-2xl mx-auto bg-white/80 backdrop-blur rounded-3xl shadow-xl border border-emerald-100 p-8 md:p-10">
-      <h1 className="text-2xl font-extrabold text-emerald-800 mb-6">Pengaturan Kos</h1>
+    <div className="max-w-2xl mx-auto bg-white dark:bg-gray-800/80 backdrop-blur rounded-3xl shadow-xl border border-emerald-100 dark:border-gray-700 p-8 md:p-10">
+      <h1 className="text-2xl font-extrabold text-emerald-800 dark:text-emerald-300 mb-6">Pengaturan Kos</h1>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
         <div>
-          <label className="block text-xs font-bold text-emerald-700 uppercase tracking-wider mb-1">Denda per hari</label>
-          <input value={dendaStr} onChange={e => setDendaStr(e.target.value)} className="w-full px-4 py-3 rounded-xl bg-emerald-50/60 border border-emerald-100 focus:outline-none focus:ring-2 focus:ring-emerald-400" placeholder="Rp 0" />
+          <label className="block text-xs font-bold text-emerald-700 dark:text-emerald-300 uppercase tracking-wider mb-1">Denda per hari</label>
+          <input value={dendaStr} onChange={e => setDendaStr(e.target.value)} className="w-full px-4 py-3 rounded-xl bg-emerald-50/60 dark:bg-gray-900 border border-emerald-100 dark:border-gray-700 focus:outline-none focus:ring-2 focus:ring-emerald-400" placeholder="Rp 0" />
         </div>
         <div>
-          <label className="block text-xs font-bold text-emerald-700 uppercase tracking-wider mb-1">Masa tenggang (0-31 hari)</label>
-          <input type="number" min={0} max={31} value={tenggang} onChange={e => setTenggang(e.target.value)} className="w-full px-4 py-3 rounded-xl bg-emerald-50/60 border border-emerald-100 focus:outline-none focus:ring-2 focus:ring-emerald-400" />
+          <label className="block text-xs font-bold text-emerald-700 dark:text-emerald-300 uppercase tracking-wider mb-1">Masa tenggang (0-31 hari)</label>
+          <input type="number" min={0} max={31} value={tenggang} onChange={e => setTenggang(e.target.value)} className="w-full px-4 py-3 rounded-xl bg-emerald-50/60 dark:bg-gray-900 border border-emerald-100 dark:border-gray-700 focus:outline-none focus:ring-2 focus:ring-emerald-400" />
         </div>
         <div>
-          <label className="block text-xs font-bold text-emerald-700 uppercase tracking-wider mb-1">Hari tagih bawaan (1-28)</label>
-          <input type="number" min={1} max={28} value={hariTagih} onChange={e => setHariTagih(e.target.value)} className="w-full px-4 py-3 rounded-xl bg-emerald-50/60 border border-emerald-100 focus:outline-none focus:ring-2 focus:ring-emerald-400" />
+          <label className="block text-xs font-bold text-emerald-700 dark:text-emerald-300 uppercase tracking-wider mb-1">Hari tagih bawaan (1-28)</label>
+          <input type="number" min={1} max={28} value={hariTagih} onChange={e => setHariTagih(e.target.value)} className="w-full px-4 py-3 rounded-xl bg-emerald-50/60 dark:bg-gray-900 border border-emerald-100 dark:border-gray-700 focus:outline-none focus:ring-2 focus:ring-emerald-400" />
         </div>
         <div>
-          <label className="block text-xs font-bold text-emerald-700 uppercase tracking-wider mb-1">Deposit bawaan</label>
-          <input value={depositStr} onChange={e => setDepositStr(e.target.value)} className="w-full px-4 py-3 rounded-xl bg-emerald-50/60 border border-emerald-100 focus:outline-none focus:ring-2 focus:ring-emerald-400" placeholder="Rp 0" />
+          <label className="block text-xs font-bold text-emerald-700 dark:text-emerald-300 uppercase tracking-wider mb-1">Deposit bawaan</label>
+          <input value={depositStr} onChange={e => setDepositStr(e.target.value)} className="w-full px-4 py-3 rounded-xl bg-emerald-50/60 dark:bg-gray-900 border border-emerald-100 dark:border-gray-700 focus:outline-none focus:ring-2 focus:ring-emerald-400" placeholder="Rp 0" />
         </div>
       </div>
       <div className="mb-4">
-        <label className="block text-xs font-bold text-emerald-700 uppercase tracking-wider mb-1">Aturan kos (maks 2000 karakter)</label>
-        <textarea value={aturan} onChange={e => setAturan(e.target.value)} rows={5} maxLength={2000} className="w-full px-4 py-3 rounded-xl bg-emerald-50/60 border border-emerald-100 focus:outline-none focus:ring-2 focus:ring-emerald-400" placeholder="Tulis aturan kos..." />
-        <div className="text-xs text-emerald-400 mt-1">{aturan.length}/2000</div>
+        <label className="block text-xs font-bold text-emerald-700 dark:text-emerald-300 uppercase tracking-wider mb-1">Aturan kos (maks 2000 karakter)</label>
+        <textarea value={aturan} onChange={e => setAturan(e.target.value)} rows={5} maxLength={2000} className="w-full px-4 py-3 rounded-xl bg-emerald-50/60 dark:bg-gray-900 border border-emerald-100 dark:border-gray-700 focus:outline-none focus:ring-2 focus:ring-emerald-400" placeholder="Tulis aturan kos..." />
+        <div className="text-xs text-emerald-400 dark:text-emerald-300 mt-1">{aturan.length}/2000</div>
       </div>
       <div className="mb-4">
-        <h2 className="text-lg font-extrabold text-emerald-800 mb-3">Info Pembayaran</h2>
-        <label className="block text-xs font-bold text-emerald-700 uppercase tracking-wider mb-1">Info pembayaran (maks 500 karakter)</label>
+        <h2 className="text-lg font-extrabold text-emerald-800 dark:text-emerald-300 mb-3">Info Pembayaran</h2>
+        <label className="block text-xs font-bold text-emerald-700 dark:text-emerald-300 uppercase tracking-wider mb-1">Info pembayaran (maks 500 karakter)</label>
         <textarea
           value={infoPembayaran}
           onChange={e => setInfoPembayaran(e.target.value)}
           rows={4}
           maxLength={500}
-          className="w-full px-4 py-3 rounded-xl bg-emerald-50/60 border border-emerald-100 focus:outline-none focus:ring-2 focus:ring-emerald-400"
+          className="w-full px-4 py-3 rounded-xl bg-emerald-50/60 dark:bg-gray-900 border border-emerald-100 dark:border-gray-700 focus:outline-none focus:ring-2 focus:ring-emerald-400"
           placeholder="Contoh: Transfer ke BRI 1234567890 a.n. Nama Pemilik, atau bayar tunai ke pemilik"
         />
-        <div className={`text-xs mt-1 ${infoPembayaran.length > 450 ? 'text-amber-600 font-bold' : 'text-emerald-400'}`}>{infoPembayaran.length}/500</div>
-        <p className="text-xs text-emerald-500 mt-2">Ditambahkan otomatis di akhir pesan pengingat tagihan via WhatsApp. Tidak ditampilkan di halaman publik.</p>
+        <div className={`text-xs mt-1 ${infoPembayaran.length > 450 ? 'text-amber-600 dark:text-amber-300 font-bold' : 'text-emerald-400 dark:text-emerald-300'}`}>{infoPembayaran.length}/500</div>
+        <p className="text-xs text-emerald-500 dark:text-emerald-400 dark:text-emerald-300 mt-2">Ditambahkan otomatis di akhir pesan pengingat tagihan via WhatsApp. Tidak ditampilkan di halaman publik.</p>
+      </div>
+      <div className="mb-4">
+        <h2 className="text-lg font-extrabold text-emerald-800 dark:text-emerald-300 mb-3">Cicilan Pembayaran</h2>
+        <label className="flex items-center gap-3 mb-3">
+          <input type="checkbox" checked={izinkanCicilan} onChange={e => setIzinkanCicilan(e.target.checked)} className="w-5 h-5 rounded border-emerald-300 text-emerald-600 focus:ring-emerald-400" />
+          <span className="text-sm font-bold text-emerald-800 dark:text-emerald-300">Izinkan penghuni membayar sebagian (cicilan)</span>
+        </label>
+        <div>
+          <label className="block text-xs font-bold text-emerald-700 dark:text-emerald-300 uppercase tracking-wider mb-1">Minimal tiap pembayaran (Rp)</label>
+          <input
+            value={cicilanMinimumStr}
+            onChange={e => setCicilanMinimumStr(e.target.value)}
+            disabled={!izinkanCicilan}
+            className="w-full px-4 py-3 rounded-xl bg-emerald-50/60 dark:bg-gray-900 border border-emerald-100 dark:border-gray-700 focus:outline-none focus:ring-2 focus:ring-emerald-400 disabled:opacity-60 disabled:cursor-not-allowed"
+            placeholder="Rp 0"
+          />
+          <p className="text-xs text-emerald-500 dark:text-emerald-400 dark:text-emerald-300 mt-2">0 berarti tanpa minimal. Contoh: minimal Rp 200.000 tiap kali bayar. Pembayaran yang melunasi sisa tagihan selalu boleh.</p>
+        </div>
       </div>
       <button onClick={handleSave} disabled={saving} className="w-full py-3 rounded-xl bg-emerald-600 text-white font-bold shadow-lg shadow-emerald-200 hover:bg-emerald-700 transition">Simpan Pengaturan</button>
     </div>

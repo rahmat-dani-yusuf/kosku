@@ -1,10 +1,12 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { useParams } from 'react-router-dom'
 import { supabase } from '../lib/supabaseClient.js'
 import { formatRupiah, formatTanggal } from '../lib/format.js'
 import { buatLinkWA, normalisasiNomor } from '../lib/whatsapp.js'
 import Modal from '../components/Modal.jsx'
 import EmptyState from '../components/EmptyState.jsx'
+import Pagination from '../components/Pagination.jsx'
+import { DEFAULT_PER_HALAMAN, hitungRange, hitungTotalHalaman } from '../lib/paginasi.js'
 import { useToast } from '../components/Toast.jsx'
 
 const AWAL_FORM = { nama: '', noHp: '', tanggalMasuk: '', catatan: '', setuju: false, jebakan: '' }
@@ -55,12 +57,12 @@ function SkeletonKamar() {
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
       {[0, 1, 2].map(i => (
-        <div key={i} className="rounded-3xl bg-white/80 border border-emerald-100 p-5 shadow-sm animate-pulse">
-          <div className="h-5 w-24 rounded-lg bg-emerald-100 mb-3" />
-          <div className="h-4 w-32 rounded-lg bg-emerald-100 mb-2" />
-          <div className="h-6 w-40 rounded-lg bg-emerald-100 mb-3" />
-          <div className="h-4 w-full rounded-lg bg-emerald-100 mb-4" />
-          <div className="h-10 w-full rounded-xl bg-emerald-100" />
+        <div key={i} className="rounded-3xl bg-white dark:bg-gray-800/80 border border-emerald-100 dark:border-gray-700 p-5 shadow-sm animate-pulse">
+          <div className="h-5 w-24 rounded-lg bg-emerald-100 dark:bg-emerald-900/40 mb-3" />
+          <div className="h-4 w-32 rounded-lg bg-emerald-100 dark:bg-emerald-900/40 mb-2" />
+          <div className="h-6 w-40 rounded-lg bg-emerald-100 dark:bg-emerald-900/40 mb-3" />
+          <div className="h-4 w-full rounded-lg bg-emerald-100 dark:bg-emerald-900/40 mb-4" />
+          <div className="h-10 w-full rounded-xl bg-emerald-100 dark:bg-emerald-900/40" />
         </div>
       ))}
     </div>
@@ -68,9 +70,9 @@ function SkeletonKamar() {
 }
 
 const inputCls = (ada) =>
-  `w-full px-4 py-3 rounded-xl bg-emerald-50/60 border ${ada ? 'border-red-300' : 'border-emerald-100'} text-emerald-900 placeholder:text-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-400 focus:border-transparent transition`
-const labelCls = 'block text-xs font-bold text-emerald-700 uppercase tracking-wider mb-1'
-const errCls = 'text-xs text-red-600 mt-1'
+  `w-full px-4 py-3 rounded-xl bg-emerald-50/60 dark:bg-gray-900 border ${ada ? 'border-red-300' : 'border-emerald-100 dark:border-gray-700'} text-emerald-900 dark:text-gray-100 placeholder:text-emerald-400 dark:text-emerald-300 focus:outline-none focus:ring-2 focus:ring-emerald-400 focus:border-transparent transition`
+const labelCls = 'block text-xs font-bold text-emerald-700 dark:text-emerald-300 uppercase tracking-wider mb-1'
+const errCls = 'text-xs text-red-600 dark:text-red-300 mt-1'
 
 export default function PesanKamar() {
   const { kosId } = useParams()
@@ -83,6 +85,11 @@ export default function PesanKamar() {
   const [kamar, setKamar] = useState([])
   const [memuatKamar, setMemuatKamar] = useState(false)
   const [galatKamar, setGalatKamar] = useState('')
+  const [cari, setCari] = useState('')
+  const [urut, setUrut] = useState('nomor')
+  const [halaman, setHalaman] = useState(1)
+  const [perHalaman, setPerHalaman] = useState(DEFAULT_PER_HALAMAN)
+  const daftarRef = useRef(null)
 
   const [aturanTerbuka, setAturanTerbuka] = useState(false)
 
@@ -152,6 +159,27 @@ export default function PesanKamar() {
     : 'Halo, saya ingin bertanya seputar kos ini. Terima kasih.'
   const linkWA = kos?.no_wa ? buatLinkWA(kos.no_wa, pesanPerkenalan) : ''
 
+  const kamarTerfilter = useMemo(() => {
+    const q = cari.trim().toLowerCase()
+    let list = kamar
+    if (q) list = list.filter(k => String(k.nomor || '').toLowerCase().includes(q) || String(k.tipe || '').toLowerCase().includes(q))
+    const sorted = [...list]
+    if (urut === 'harga_asc') sorted.sort((a, b) => (a.harga_bulanan || 0) - (b.harga_bulanan || 0))
+    else if (urut === 'harga_desc') sorted.sort((a, b) => (b.harga_bulanan || 0) - (a.harga_bulanan || 0))
+    else sorted.sort((a, b) => String(a.nomor || '').localeCompare(String(b.nomor || ''), undefined, { numeric: true }))
+    return sorted
+  }, [kamar, cari, urut])
+
+  useEffect(() => { setHalaman(1) }, [cari, urut, perHalaman])
+
+  useEffect(() => {
+    if (daftarRef.current) daftarRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }, [halaman])
+
+  const { from, to } = hitungRange(halaman, perHalaman)
+  const kamarHalaman = kamarTerfilter.slice(from, to + 1)
+  const totalHalaman = hitungTotalHalaman(kamarTerfilter.length, perHalaman)
+
   const bukaModal = (k) => {
     setKamarTerpilih(k)
     setForm(AWAL_FORM)
@@ -220,13 +248,13 @@ export default function PesanKamar() {
         <header className="bg-emerald-600">
           <div className="max-w-3xl mx-auto px-4 py-5">
             <div className="text-xs font-bold uppercase tracking-widest text-emerald-200 mb-2">KosKu</div>
-            <div className="h-7 w-48 rounded-lg bg-emerald-500 animate-pulse mb-2" />
-            <div className="h-4 w-64 max-w-full rounded-lg bg-emerald-500 animate-pulse mb-4" />
-            <div className="h-10 w-56 rounded-xl bg-emerald-500 animate-pulse" />
+            <div className="h-7 w-48 rounded-lg bg-emerald-50 dark:bg-gray-800/500 animate-pulse mb-2" />
+            <div className="h-4 w-64 max-w-full rounded-lg bg-emerald-50 dark:bg-gray-800/500 animate-pulse mb-4" />
+            <div className="h-10 w-56 rounded-xl bg-emerald-50 dark:bg-gray-800/500 animate-pulse" />
           </div>
         </header>
         <main className="max-w-3xl mx-auto px-4 py-6">
-          <div className="h-6 w-40 rounded-lg bg-emerald-100 animate-pulse mb-4" />
+          <div className="h-6 w-40 rounded-lg bg-emerald-100 dark:bg-emerald-900/40 animate-pulse mb-4" />
           <SkeletonKamar />
         </main>
       </div>
@@ -242,9 +270,9 @@ export default function PesanKamar() {
           </div>
         </header>
         <main className="max-w-3xl mx-auto px-4 py-10">
-          <div className="rounded-3xl bg-white/90 backdrop-blur border border-emerald-100 shadow-sm p-8 text-center">
-            <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-emerald-100 flex items-center justify-center text-3xl">🔍</div>
-            <p className="font-extrabold text-emerald-800">Kos tidak ditemukan atau tidak aktif</p>
+          <div className="rounded-3xl bg-white dark:bg-gray-800/90 backdrop-blur border border-emerald-100 dark:border-gray-700 shadow-sm p-8 text-center">
+            <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-emerald-100 dark:bg-emerald-900/40 flex items-center justify-center text-3xl">🔍</div>
+            <p className="font-extrabold text-emerald-800 dark:text-emerald-300">Kos tidak ditemukan atau tidak aktif</p>
           </div>
         </main>
       </div>
@@ -263,7 +291,7 @@ export default function PesanKamar() {
               href={linkWA}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 mt-3 px-4 py-2.5 rounded-xl bg-white text-emerald-700 text-sm font-bold shadow-lg transition hover:bg-emerald-50"
+              className="inline-flex items-center gap-2 mt-3 px-4 py-2.5 rounded-xl bg-white dark:bg-gray-800 text-emerald-700 dark:text-emerald-300 text-sm font-bold shadow-lg transition hover:bg-emerald-50 dark:hover:bg-gray-800/50"
             >
               <span>💬</span>
               <span>Hubungi pemilik via WhatsApp</span>
@@ -274,21 +302,43 @@ export default function PesanKamar() {
 
       <main className="max-w-3xl mx-auto px-4 py-6 pb-16">
         <section>
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-extrabold text-emerald-800">Kamar Tersedia</h2>
+          <div ref={daftarRef} className="flex flex-col gap-3 mb-4">
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-extrabold text-emerald-800 dark:text-emerald-300">Kamar Tersedia</h2>
+              {!memuatKamar && !galatKamar && kamar.length > 0 && (
+                <span className="text-xs font-bold text-emerald-600 dark:text-emerald-300 bg-emerald-100 dark:bg-emerald-900/40 rounded-full px-2.5 py-1">{kamarTerfilter.length} kamar</span>
+              )}
+            </div>
             {!memuatKamar && !galatKamar && kamar.length > 0 && (
-              <span className="text-xs font-bold text-emerald-600 bg-emerald-100 rounded-full px-2.5 py-1">{kamar.length} kamar</span>
+              <div className="flex flex-col sm:flex-row gap-2">
+                <input
+                  type="text"
+                  value={cari}
+                  onChange={e => setCari(e.target.value)}
+                  placeholder="Cari nomor kamar atau tipe..."
+                  className="flex-1 px-4 py-2.5 rounded-xl bg-emerald-50/60 dark:bg-gray-900 border border-emerald-100 dark:border-gray-700 focus:outline-none focus:ring-2 focus:ring-emerald-400"
+                />
+                <select
+                  value={urut}
+                  onChange={e => setUrut(e.target.value)}
+                  className="px-3 py-2.5 rounded-xl bg-white dark:bg-gray-800 border border-emerald-100 dark:border-gray-700 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-emerald-400"
+                >
+                  <option value="nomor">Nomor kamar</option>
+                  <option value="harga_asc">Harga termurah</option>
+                  <option value="harga_desc">Harga termahal</option>
+                </select>
+              </div>
             )}
           </div>
 
           {galatKamar && (
-            <div className="rounded-2xl bg-red-50 border border-red-100 text-red-700 px-4 py-3 mb-4 text-sm" role="alert">{galatKamar}</div>
+            <div className="rounded-2xl bg-red-50 dark:bg-red-900/30 border border-red-100 dark:border-red-800 text-red-700 dark:text-red-200 px-4 py-3 mb-4 text-sm" role="alert">{galatKamar}</div>
           )}
 
           {memuatKamar ? (
             <SkeletonKamar />
           ) : !galatKamar && kamar.length === 0 ? (
-            <div className="rounded-3xl bg-white/80 backdrop-blur border border-emerald-100 shadow-sm px-4">
+            <div className="rounded-3xl bg-white dark:bg-gray-800/80 backdrop-blur border border-emerald-100 dark:border-gray-700 shadow-sm px-4">
               <EmptyState title="Belum ada kamar kosong saat ini" desc="Hubungi pemilik kos untuk informasi lainnya." />
               {linkWA && (
                 <div className="pb-10 -mt-4">
@@ -303,19 +353,24 @@ export default function PesanKamar() {
                 </div>
               )}
             </div>
+          ) : !galatKamar && kamarTerfilter.length === 0 ? (
+            <div className="rounded-3xl bg-white dark:bg-gray-800/80 backdrop-blur border border-emerald-100 dark:border-gray-700 shadow-sm px-4">
+              <EmptyState title="Tidak ada kamar yang cocok" desc="Coba ubah kata kunci pencarian." />
+            </div>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {kamar.map(k => (
-                <div key={k.id} className="rounded-3xl bg-white/90 backdrop-blur border border-emerald-100 shadow-sm p-5 flex flex-col transition hover:shadow-lg">
+            <>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {kamarHalaman.map(k => (
+                <div key={k.id} className="rounded-3xl bg-white dark:bg-gray-800/90 backdrop-blur border border-emerald-100 dark:border-gray-700 shadow-sm p-5 flex flex-col transition hover:shadow-lg">
                   <div className="flex items-start justify-between gap-2 mb-2">
-                    <div className="font-extrabold text-xl text-emerald-800">No. {k.nomor}</div>
-                    <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700 border border-emerald-200 shrink-0">Kosong</span>
+                    <div className="font-extrabold text-xl text-emerald-800 dark:text-emerald-300">No. {k.nomor}</div>
+                    <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-gray-700 shrink-0">Kosong</span>
                   </div>
-                  <div className="text-sm text-emerald-600 mb-1">{k.tipe || '-'}</div>
-                  <div className="text-lg font-bold text-emerald-800 mb-2">
-                    {formatRupiah(k.harga_bulanan)}<span className="text-xs font-normal text-emerald-400">/bulan</span>
+                  <div className="text-sm text-emerald-600 dark:text-emerald-300 mb-1">{k.tipe || '-'}</div>
+                  <div className="text-lg font-bold text-emerald-800 dark:text-emerald-300 mb-2">
+                    {formatRupiah(k.harga_bulanan)}<span className="text-xs font-normal text-emerald-400 dark:text-emerald-300">/bulan</span>
                   </div>
-                  <div className="text-sm text-emerald-500 mb-4 flex-1">Fasilitas: {k.fasilitas || '-'}</div>
+                  <div className="text-sm text-emerald-500 dark:text-emerald-400 dark:text-emerald-300 mb-4 flex-1">Fasilitas: {k.fasilitas || '-'}</div>
                   <button
                     type="button"
                     onClick={() => bukaModal(k)}
@@ -326,24 +381,35 @@ export default function PesanKamar() {
                 </div>
               ))}
             </div>
+            <div className="mt-4">
+              <Pagination
+                halaman={halaman}
+                perHalaman={perHalaman}
+                total={kamarTerfilter.length}
+                onUbahHalaman={setHalaman}
+                onUbahPerHalaman={setPerHalaman}
+                loading={memuatKamar}
+              />
+            </div>
+          </>
           )}
         </section>
 
         {kos.aturan_kos && kos.aturan_kos.trim() && (
-          <section className="mt-6 rounded-3xl bg-white/90 backdrop-blur border border-emerald-100 shadow-sm overflow-hidden">
+          <section className="mt-6 rounded-3xl bg-white dark:bg-gray-800/90 backdrop-blur border border-emerald-100 dark:border-gray-700 shadow-sm overflow-hidden">
             <button
               type="button"
               onClick={() => setAturanTerbuka(v => !v)}
               aria-expanded={aturanTerbuka}
               className="w-full flex items-center justify-between gap-3 px-5 py-4 text-left"
             >
-              <span className="font-extrabold text-emerald-800">Aturan Kos</span>
-              <span className="w-7 h-7 shrink-0 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center font-bold text-lg leading-none">
+              <span className="font-extrabold text-emerald-800 dark:text-emerald-300">Aturan Kos</span>
+              <span className="w-7 h-7 shrink-0 rounded-full bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300 flex items-center justify-center font-bold text-lg leading-none">
                 {aturanTerbuka ? '−' : '+'}
               </span>
             </button>
             {aturanTerbuka && (
-              <div className="px-5 pb-5 -mt-1 text-sm text-emerald-700 leading-relaxed whitespace-pre-line">{kos.aturan_kos}</div>
+              <div className="px-5 pb-5 -mt-1 text-sm text-emerald-700 dark:text-emerald-300 leading-relaxed whitespace-pre-line">{kos.aturan_kos}</div>
             )}
           </section>
         )}
@@ -356,17 +422,17 @@ export default function PesanKamar() {
       >
         {berhasil ? (
           <div className="text-center">
-            <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-emerald-100 flex items-center justify-center text-3xl text-emerald-600">✓</div>
-            <p className="font-extrabold text-emerald-800 leading-snug">
+            <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-emerald-100 dark:bg-emerald-900/40 flex items-center justify-center text-3xl text-emerald-600 dark:text-emerald-300">✓</div>
+            <p className="font-extrabold text-emerald-800 dark:text-emerald-300 leading-snug">
               Pengajuan terkirim. Pemilik kos akan menghubungi Anda lewat WhatsApp.
             </p>
-            <div className="mt-4 rounded-2xl bg-emerald-50 border border-emerald-100 text-left text-sm text-emerald-800 divide-y divide-emerald-100">
+            <div className="mt-4 rounded-2xl bg-emerald-50 dark:bg-gray-800/50 border border-emerald-100 dark:border-gray-700 text-left text-sm text-emerald-800 dark:text-emerald-300 divide-y divide-emerald-100">
               <div className="flex items-center justify-between gap-3 px-4 py-2.5">
-                <span className="text-emerald-500">Kamar</span>
+                <span className="text-emerald-500 dark:text-emerald-400 dark:text-emerald-300">Kamar</span>
                 <span className="font-bold text-right">No. {hasil?.nomor}</span>
               </div>
               <div className="flex items-center justify-between gap-3 px-4 py-2.5">
-                <span className="text-emerald-500">Tanggal masuk</span>
+                <span className="text-emerald-500 dark:text-emerald-400 dark:text-emerald-300">Tanggal masuk</span>
                 <span className="font-bold text-right">{formatTanggal(hasil?.tanggal)}</span>
               </div>
             </div>
@@ -383,7 +449,7 @@ export default function PesanKamar() {
             <button
               type="button"
               onClick={tutupModal}
-              className="w-full mt-3 py-3 rounded-xl bg-emerald-50 text-emerald-700 font-bold border border-emerald-100 transition hover:bg-emerald-100"
+              className="w-full mt-3 py-3 rounded-xl bg-emerald-50 dark:bg-gray-800/50 text-emerald-700 dark:text-emerald-300 font-bold border border-emerald-100 dark:border-gray-700 transition hover:bg-emerald-100 dark:hover:bg-emerald-900/40"
             >
               Tutup
             </button>
@@ -445,14 +511,14 @@ export default function PesanKamar() {
                 maxLength={500}
                 className={`${inputCls(galat.catatan)} resize-none`}
               />
-              <div className={`text-xs mt-1 text-right ${form.catatan.length > 450 ? 'text-amber-600 font-bold' : 'text-emerald-500'}`}>
+              <div className={`text-xs mt-1 text-right ${form.catatan.length > 450 ? 'text-amber-600 dark:text-amber-300 font-bold' : 'text-emerald-500 dark:text-emerald-400 dark:text-emerald-300'}`}>
                 {form.catatan.length}/500
               </div>
               {galat.catatan && <p className={`${errCls} -mt-1`}>{galat.catatan}</p>}
             </div>
 
             <div>
-              <label className="flex items-start gap-3 text-sm text-emerald-800">
+              <label className="flex items-start gap-3 text-sm text-emerald-800 dark:text-emerald-300">
                 <input
                   type="checkbox"
                   checked={form.setuju}

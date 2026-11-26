@@ -4,6 +4,9 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#059669" />
+    <script>
+      (function(){try{var p=localStorage.getItem('kosku-tema')||'otomatis';var dark=p==='gelap'||(p==='otomatis'&&window.matchMedia('(prefers-color-scheme: dark)').matches);if(dark){document.documentElement.classList.add('dark');var m=document.querySelector('meta[name="theme-color"]');if(m)m.setAttribute('content','#1f2937');}}catch(e){}})();
+    </script>
     <meta name="description" content="KosKu - Manajemen Kos sederhana dan cepat." />
     <link rel="icon" type="image/png" href="/icons/icon-192.png" />
     <link rel="apple-touch-icon" href="/icons/icon-192.png" />

@@ -19,13 +19,16 @@ import PesanKamar from './pages/PesanKamar.jsx'
 const Beranda = lazy(() => import('./pages/Beranda.jsx'))
 const Laporan = lazy(() => import('./pages/Laporan.jsx'))
 const Admin = lazy(() => import('./pages/Admin.jsx'))
+const BayarTagihan = lazy(() => import('./pages/BayarTagihan.jsx'))
+const LupaSandi = lazy(() => import('./pages/LupaSandi.jsx'))
+const AturUlangSandi = lazy(() => import('./pages/AturUlangSandi.jsx'))
 
 function FallbackHalaman() {
   return (
     <div className="min-h-[50vh] flex items-center justify-center">
       <div className="flex flex-col items-center gap-3">
-        <span className="w-8 h-8 border-4 border-emerald-200 border-t-emerald-600 rounded-full animate-spin" />
-        <span className="text-sm font-bold text-emerald-600">Memuat...</span>
+        <span className="w-8 h-8 border-4 border-emerald-200 dark:border-gray-700 border-t-emerald-600 rounded-full animate-spin" />
+        <span className="text-sm font-bold text-emerald-600 dark:text-emerald-300">Memuat...</span>
       </div>
     </div>
   )
@@ -43,6 +46,9 @@ function App() {
           <Route path="/login" element={<Login />} />
           <Route path="/daftar" element={<Daftar />} />
           <Route path="/kos/:kosId" element={<PesanKamar />} />
+          <Route path="/bayar/:tagihanId" element={<Halaman><BayarTagihan /></Halaman>} />
+          <Route path="/lupa-sandi" element={<Halaman><LupaSandi /></Halaman>} />
+          <Route path="/atur-ulang-sandi" element={<Halaman><AturUlangSandi /></Halaman>} />
           <Route element={<ProtectedRoute><Layout /></ProtectedRoute>}>
             <Route path="/" element={<Halaman><Beranda /></Halaman>} />
             <Route path="/kamar" element={<Kamar />} />

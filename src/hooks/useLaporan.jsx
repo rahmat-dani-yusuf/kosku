@@ -2,6 +2,12 @@ import { useState, useEffect, useCallback, useMemo } from 'react'
 import { supabase } from '../lib/supabaseClient.js'
 import { useAuth } from './useAuth.jsx'
 
+function pad(n) { return String(n).padStart(2, '0') }
+function akhirBulan(y, m) {
+  const d = new Date(y, m, 0)
+  return `${y}-${pad(m)}-${pad(d.getDate())}`
+}
+
 export function useLaporan() {
   const { user } = useAuth()
   const [periode, setPeriode] = useState(() => {
@@ -11,70 +17,69 @@ export function useLaporan() {
   const [tagihan, setTagihan] = useState([])
   const [kamar, setKamar] = useState([])
   const [penghuni, setPenghuni] = useState([])
+  const [pembayaran, setPembayaran] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
+
+  const y = periode.getFullYear()
+  const m = periode.getMonth() + 1
+  const p = `${y}-${pad(m)}-01`
+  const akhir = akhirBulan(y, m)
 
   const reload = useCallback(async () => {
     if (!user) return
     setLoading(true)
     setError(null)
     try {
-      const y = periode.getFullYear()
-      const m = String(periode.getMonth() + 1).padStart(2, '0')
-      const p = `${y}-${m}-01`
-      const [tres, kres, pres] = await Promise.all([
+      const [tres, kres, pres, payres] = await Promise.all([
         supabase.from('tagihan').select('*, sewa:sewa_id(kamar_id, penghuni_id, kamar:kamar_id(nomor,tipe,harga_bulanan,status), penghuni:penghuni_id(nama,no_hp))').eq('user_id', user.id).eq('periode', p).order('jatuh_tempo'),
         supabase.from('kamar').select('id,nomor,tipe,harga_bulanan,fasilitas,status').eq('user_id', user.id).order('nomor'),
-        supabase.from('penghuni').select('id,nama,no_hp,pekerjaan,kontak_darurat,catatan').eq('user_id', user.id).order('nama').then(async ({ data }) => {
-          const ids = (data || []).map(p => p.id)
-          const { data: s } = ids.length ? await supabase.from('sewa').select('penghuni_id').eq('user_id', user.id).eq('status', 'aktif').in('penghuni_id', ids) : { data: [] }
-          const active = new Set((s || []).map(x => x.penghuni_id))
-          return { data: (data || []).map(p => ({ ...p, aktif: active.has(p.id) })) }
-        })
+        supabase.from('penghuni').select('id,nama,no_hp,pekerjaan,kontak_darurat,catatan').eq('user_id', user.id).order('nama'),
+        supabase.from('pembayaran').select('id,jumlah,tanggal,metode,catatan,bukti_id,created_at,tagihan:tagihan_id(sewa:sewa_id(kamar:kamar_id(nomor),penghuni:penghuni_id(nama)))').eq('user_id', user.id).gte('tanggal', p).lte('tanggal', akhir).order('tanggal').order('created_at')
       ])
       if (tres.error) throw tres.error
       if (kres.error) throw kres.error
-      // pres is result of then chain; handle directly below
+      if (payres.error) throw payres.error
+
       setTagihan(tres.data || [])
       setKamar(kres.data || [])
-      // penghinis loaded via second promise; need to resolve correctly
+      setPembayaran(payres.data || [])
+
+      const ids = (pres.data || []).map(x => x.id)
+      const { data: s } = ids.length ? await supabase.from('sewa').select('penghuni_id').eq('user_id', user.id).eq('status', 'aktif').in('penghuni_id', ids) : { data: [] }
+      const active = new Set((s || []).map(x => x.penghuni_id))
+      setPenghuni((pres.data || []).map(x => ({ ...x, aktif: active.has(x.id) })))
     } catch (e) {
       setError(e.message || 'Gagal memuat laporan')
     } finally {
       setLoading(false)
     }
-  }, [user, periode])
+  }, [user, p, akhir])
 
   useEffect(() => { reload() }, [reload])
-
-  // Re-fetch penghuni correctly
-  useEffect(() => {
-    if (!user || !periode) return
-    const y = periode.getFullYear(); const m = String(periode.getMonth()+1).padStart(2,'0'); const p = `${y}-${m}-01`
-    const fetchPenghuni = async () => {
-      const { data } = await supabase.from('penghuni').select('id,nama,no_hp,pekerjaan,kontak_darurat,catatan').eq('user_id', user.id).order('nama')
-      const ids = (data || []).map(p => p.id)
-      const { data: s } = ids.length ? await supabase.from('sewa').select('penghuni_id').eq('user_id', user.id).eq('status', 'aktif').in('penghuni_id', ids) : { data: [] }
-      const active = new Set((s || []).map(x => x.penghuni_id))
-      setPenghuni((data || []).map(p => ({ ...p, aktif: active.has(p.id) })))
-    }
-    fetchPenghuni()
-  }, [user, periode])
 
   const ringkasan = useMemo(() => {
     const total = tagihan.length
     const lunas = tagihan.filter(t => t.status === 'lunas')
     const belum = tagihan.filter(t => t.status === 'belum')
-    const terlambat = belum.filter(t => (t.jatuh_tempo || '') < new Date().toISOString().split('T')[0])
+    const todayStr = new Date().toISOString().split('T')[0]
+    const terlambat = belum.filter(t => (t.jatuh_tempo || '') < todayStr)
+    const tagihanDiterbitkan = tagihan.reduce((s, t) => s + Number(t.jumlah || 0), 0)
+    const uangMasuk = pembayaran.reduce((s, p) => s + Number(p.jumlah || 0), 0)
+    const sisaBelumBayar = belum.reduce((s, t) => s + (Number(t.jumlah || 0) - Number(t.terbayar || 0)), 0)
+    const dendaDiterima = lunas.reduce((s, t) => s + Number(t.denda || 0), 0)
+    const persenBayar = tagihanDiterbitkan ? Math.min(100, Math.round((uangMasuk / tagihanDiterbitkan) * 100)) : 0
     return {
-      total, lunas: lunas.length,       totalLunas: lunas.reduce((s,t)=>s+((t.jumlah||0)+(t.denda||0)),0),
-      belum: belum.length, totalBelum: belum.reduce((s,t)=>s+(t.jumlah||0),0),
-      terlambat: terlambat.length, totalTerlambat: terlambat.reduce((s,t)=>s+(t.jumlah||0),0),
-      persenBayar: total ? Math.round((lunas.length / total) * 100) : 0,
+      total, lunas: lunas.length, totalLunas: lunas.reduce((s, t) => s + (Number(t.jumlah || 0) + Number(t.denda || 0)), 0),
+      belum: belum.length, totalBelum: sisaBelumBayar,
+      terlambat: terlambat.length, totalTerlambat: terlambat.reduce((s, t) => s + (Number(t.jumlah || 0) - Number(t.terbayar || 0)), 0),
+      persenBayar,
+      uangMasukLebih: uangMasuk > tagihanDiterbitkan,
+      tagihanDiterbitkan, uangMasuk, sisaBelumBayar, dendaDiterima,
       kamarTerisi: kamar.filter(k => k.status === 'terisi').length,
       kamarTotal: kamar.length
     }
-  }, [tagihan, kamar])
+  }, [tagihan, kamar, pembayaran])
 
-  return { tagihan, kamar, penghuni, loading, error, periode, setPeriode, reload, ringkasan }
+  return { tagihan, kamar, penghuni, pembayaran, loading, error, periode, setPeriode, reload, ringkasan }
 }

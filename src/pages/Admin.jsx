@@ -5,6 +5,9 @@ import { useAdmin } from '../hooks/useAdmin.js'
 import { formatTanggal } from '../lib/format.js'
 import { unduhDaftarKos } from '../lib/ekspor.js'
 import EmptyState from '../components/EmptyState.jsx'
+import Pagination from '../components/Pagination.jsx'
+import { DEFAULT_PER_HALAMAN, hitungRange, hitungTotalHalaman } from '../lib/paginasi.js'
+import PemilihTema from '../components/PemilihTema.jsx'
 import ConfirmDialog from '../components/ConfirmDialog.jsx'
 import { useToast } from '../components/Toast.jsx'
 
@@ -20,6 +23,8 @@ export default function Admin() {
   const [urut, setUrut] = useState('terbaru')
   const [konfirmasi, setKonfirmasi] = useState(null)
   const [memproses, setMemproses] = useState(null)
+  const [halaman, setHalaman] = useState(1)
+  const [perHalaman, setPerHalaman] = useState(DEFAULT_PER_HALAMAN)
 
   const okupansiTotal = statistik.total_kamar ? Math.round((statistik.kamar_terisi / statistik.total_kamar) * 100) : 0
 
@@ -41,8 +46,13 @@ export default function Admin() {
     return rows
   }, [daftarKos, cari, filterStatus, urut])
 
+  useEffect(() => { setHalaman(1) }, [cari, filterStatus, urut])
   const kosongSemua = !loading && daftarKos.length === 0
   const kosongFilter = !loading && daftarKos.length > 0 && hasil.length === 0
+
+  const { from, to } = hitungRange(halaman, perHalaman)
+  const hasilHalaman = hasil.slice(from, to + 1)
+  const totalHalaman = hitungTotalHalaman(hasil.length, perHalaman)
 
   const mintaKonfirmasi = (k, aksi) => {
     if (memproses) return
@@ -77,7 +87,7 @@ export default function Admin() {
   }
 
   const Badge = ({ aktif }) => (
-    <span className={`text-xs font-bold px-2.5 py-0.5 rounded-full border whitespace-nowrap ${aktif ? 'bg-emerald-100 text-emerald-700 border-emerald-200' : 'bg-red-100 text-red-700 border-red-200'}`}>
+    <span className={`text-xs font-bold px-2.5 py-0.5 rounded-full border whitespace-nowrap ${aktif ? 'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-gray-700' : 'bg-red-100 text-red-700 dark:text-red-200 border-red-200 dark:border-red-800'}`}>
       {aktif ? 'Aktif' : 'Nonaktif'}
     </span>
   )
@@ -85,27 +95,30 @@ export default function Admin() {
   const okupansiPct = (k) => k.jumlah_kamar ? Math.round((k.kamar_terisi / k.jumlah_kamar) * 100) : 0
 
   return (
-    <div className="min-h-screen bg-emerald-50 flex flex-col">
-      <header className="bg-emerald-800 text-white px-4 sm:px-6 py-4 flex items-center justify-between shadow-lg">
+    <div className="min-h-screen bg-emerald-50 dark:bg-gray-800/50 flex flex-col">
+      <header className="bg-emerald-800 dark:bg-gray-900 text-white px-4 sm:px-6 py-4 flex items-center justify-between shadow-lg">
         <h1 className="text-lg sm:text-xl font-extrabold tracking-tight">KosKu Super Admin</h1>
-        <button onClick={() => signOut()} className="px-4 py-2 rounded-xl bg-white text-emerald-800 font-bold text-sm hover:bg-emerald-50 transition">Keluar</button>
+        <div className="flex items-center gap-2">
+          <PemilihTema compact />
+          <button onClick={() => signOut()} className="px-4 py-2 rounded-xl bg-white dark:bg-gray-800 text-emerald-800 dark:text-gray-100 font-bold text-sm hover:bg-emerald-50 dark:hover:bg-gray-700 transition">Keluar</button>
+        </div>
       </header>
 
       <main className="flex-1 px-3 sm:px-6 py-6 max-w-6xl w-full mx-auto">
-        <h2 className="text-xl sm:text-2xl font-extrabold text-emerald-800 mb-1">
+        <h2 className="text-xl sm:text-2xl font-extrabold text-emerald-800 dark:text-emerald-300 mb-1">
           {profilLoading ? 'Memuat...' : `Halo, ${profil?.nama_pemilik || 'Super Admin'}`}
         </h2>
-        <p className="text-emerald-600 text-sm mb-5">Dashboard Super Admin</p>
+        <p className="text-emerald-600 dark:text-emerald-300 text-sm mb-5">Dashboard Super Admin</p>
 
-        {error && <div className="rounded-xl bg-red-50 border border-red-100 text-red-700 px-4 py-3 mb-4 text-sm">{error}</div>}
+        {error && <div className="rounded-xl bg-red-50 dark:bg-red-900/30 border border-red-100 dark:border-red-800 text-red-700 dark:text-red-200 px-4 py-3 mb-4 text-sm">{error}</div>}
 
         {/* Statistik */}
         {loading ? (
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
             {[...Array(4)].map((_, i) => (
-              <div key={i} className="rounded-2xl p-4 bg-white shadow-sm border border-emerald-100 animate-pulse">
-                <div className="h-3 w-20 bg-emerald-100 rounded mb-2" />
-                <div className="h-7 w-16 bg-emerald-100 rounded" />
+              <div key={i} className="rounded-2xl p-4 bg-white dark:bg-gray-800 shadow-sm border border-emerald-100 dark:border-gray-700 animate-pulse">
+                <div className="h-3 w-20 bg-emerald-100 dark:bg-emerald-900/40 rounded mb-2" />
+                <div className="h-7 w-16 bg-emerald-100 dark:bg-emerald-900/40 rounded" />
               </div>
             ))}
           </div>
@@ -116,31 +129,31 @@ export default function Admin() {
               <div className="text-2xl font-extrabold">{statistik.jumlah_pemilik}</div>
               <div className="text-xs font-bold opacity-90">{statistik.pemilik_aktif} aktif</div>
             </div>
-            <div className="rounded-2xl p-4 bg-white shadow-sm border border-emerald-100">
-              <div className="text-xs font-semibold text-emerald-400">Total Kamar</div>
-              <div className="text-2xl font-extrabold text-emerald-800">{statistik.total_kamar}</div>
+            <div className="rounded-2xl p-4 bg-white dark:bg-gray-800 shadow-sm border border-emerald-100 dark:border-gray-700">
+              <div className="text-xs font-semibold text-emerald-400 dark:text-emerald-300">Total Kamar</div>
+              <div className="text-2xl font-extrabold text-emerald-800 dark:text-emerald-300">{statistik.total_kamar}</div>
             </div>
-            <div className="rounded-2xl p-4 bg-white shadow-sm border border-emerald-100">
-              <div className="text-xs font-semibold text-emerald-400">Kamar Terisi</div>
-              <div className="text-2xl font-extrabold text-emerald-800">{statistik.kamar_terisi} <span className="text-base font-bold text-emerald-500">({okupansiTotal}%)</span></div>
+            <div className="rounded-2xl p-4 bg-white dark:bg-gray-800 shadow-sm border border-emerald-100 dark:border-gray-700">
+              <div className="text-xs font-semibold text-emerald-400 dark:text-emerald-300">Kamar Terisi</div>
+              <div className="text-2xl font-extrabold text-emerald-800 dark:text-emerald-300">{statistik.kamar_terisi} <span className="text-base font-bold text-emerald-500 dark:text-emerald-400 dark:text-emerald-300">({okupansiTotal}%)</span></div>
             </div>
-            <div className="rounded-2xl p-4 bg-white shadow-sm border border-emerald-100">
-              <div className="text-xs font-semibold text-emerald-400">Sewa Aktif</div>
-              <div className="text-2xl font-extrabold text-emerald-800">{statistik.sewa_aktif}</div>
+            <div className="rounded-2xl p-4 bg-white dark:bg-gray-800 shadow-sm border border-emerald-100 dark:border-gray-700">
+              <div className="text-xs font-semibold text-emerald-400 dark:text-emerald-300">Sewa Aktif</div>
+              <div className="text-2xl font-extrabold text-emerald-800 dark:text-emerald-300">{statistik.sewa_aktif}</div>
             </div>
           </div>
         )}
 
         {/* Kontrol */}
         <div className="flex flex-col sm:flex-row gap-2 mb-4">
-          <input value={cari} onChange={e => setCari(e.target.value)} placeholder="Cari nama kos, pemilik, atau email..." className="flex-1 min-w-0 px-4 py-2.5 rounded-xl bg-white border border-emerald-100 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400" />
+          <input value={cari} onChange={e => setCari(e.target.value)} placeholder="Cari nama kos, pemilik, atau email..." className="flex-1 min-w-0 px-4 py-2.5 rounded-xl bg-white dark:bg-gray-800 border border-emerald-100 dark:border-gray-700 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400" />
           <div className="flex gap-2">
-            <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)} className="px-3 py-2.5 rounded-xl bg-white border border-emerald-100 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-emerald-400">
+            <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)} className="px-3 py-2.5 rounded-xl bg-white dark:bg-gray-800 border border-emerald-100 dark:border-gray-700 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-emerald-400">
               <option value="semua">Semua</option>
               <option value="aktif">Aktif</option>
               <option value="nonaktif">Nonaktif</option>
             </select>
-            <select value={urut} onChange={e => setUrut(e.target.value)} className="px-3 py-2.5 rounded-xl bg-white border border-emerald-100 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-emerald-400">
+            <select value={urut} onChange={e => setUrut(e.target.value)} className="px-3 py-2.5 rounded-xl bg-white dark:bg-gray-800 border border-emerald-100 dark:border-gray-700 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-emerald-400">
               <option value="terbaru">Terbaru</option>
               <option value="nama">Nama kos</option>
               <option value="kamar">Kamar terbanyak</option>
@@ -153,9 +166,9 @@ export default function Admin() {
         {loading && (
           <div className="space-y-3">
             {[...Array(3)].map((_, i) => (
-              <div key={i} className="rounded-2xl bg-white border border-emerald-100 p-4 animate-pulse">
-                <div className="h-4 w-40 bg-emerald-100 rounded mb-2" />
-                <div className="h-3 w-64 bg-emerald-100 rounded" />
+              <div key={i} className="rounded-2xl bg-white dark:bg-gray-800 border border-emerald-100 dark:border-gray-700 p-4 animate-pulse">
+                <div className="h-4 w-40 bg-emerald-100 dark:bg-emerald-900/40 rounded mb-2" />
+                <div className="h-3 w-64 bg-emerald-100 dark:bg-emerald-900/40 rounded" />
               </div>
             ))}
           </div>
@@ -167,7 +180,7 @@ export default function Admin() {
         {!loading && hasil.length > 0 && (
           <>
             {/* Desktop: tabel */}
-            <div className="hidden md:block overflow-x-auto rounded-3xl shadow-xl border border-emerald-100 bg-white/80 backdrop-blur mb-4">
+            <div className="hidden md:block overflow-x-auto rounded-3xl shadow-xl border border-emerald-100 dark:border-gray-700 bg-white dark:bg-gray-800/80 backdrop-blur mb-4">
               <table className="w-full text-sm text-left">
                 <thead className="bg-emerald-600 text-white">
                   <tr>
@@ -184,23 +197,23 @@ export default function Admin() {
                   </tr>
                 </thead>
                 <tbody>
-                  {hasil.map(k => (
-                    <tr key={k.user_id} className="border-b border-emerald-50 hover:bg-emerald-50/40">
-                      <td className="px-4 py-3 font-bold text-emerald-800">{k.nama_kos || '-'}</td>
-                      <td className="px-4 py-3 text-emerald-700">{k.nama_pemilik || '-'}</td>
-                      <td className="px-4 py-3 text-emerald-600 break-all">{k.email || '-'}</td>
-                      <td className="px-4 py-3 text-emerald-600">{k.alamat || '-'}</td>
-                      <td className="px-4 py-3 font-bold text-emerald-800">{k.jumlah_kamar || 0}</td>
-                      <td className="px-4 py-3 text-emerald-700">{k.kamar_terisi || 0} ({okupansiPct(k)}%)</td>
-                      <td className="px-4 py-3 text-emerald-700">{k.sewa_aktif || 0}</td>
-                      <td className="px-4 py-3 text-emerald-600 whitespace-nowrap">{formatTanggal(k.terdaftar)}</td>
+                  {hasilHalaman.map(k => (
+                    <tr key={k.user_id} className="border-b border-emerald-50 hover:bg-emerald-50 dark:hover:bg-gray-800/50/40">
+                      <td className="px-4 py-3 font-bold text-emerald-800 dark:text-emerald-300">{k.nama_kos || '-'}</td>
+                      <td className="px-4 py-3 text-emerald-700 dark:text-emerald-300">{k.nama_pemilik || '-'}</td>
+                      <td className="px-4 py-3 text-emerald-600 dark:text-emerald-300 break-all">{k.email || '-'}</td>
+                      <td className="px-4 py-3 text-emerald-600 dark:text-emerald-300">{k.alamat || '-'}</td>
+                      <td className="px-4 py-3 font-bold text-emerald-800 dark:text-emerald-300">{k.jumlah_kamar || 0}</td>
+                      <td className="px-4 py-3 text-emerald-700 dark:text-emerald-300">{k.kamar_terisi || 0} ({okupansiPct(k)}%)</td>
+                      <td className="px-4 py-3 text-emerald-700 dark:text-emerald-300">{k.sewa_aktif || 0}</td>
+                      <td className="px-4 py-3 text-emerald-600 dark:text-emerald-300 whitespace-nowrap">{formatTanggal(k.terdaftar)}</td>
                       <td className="px-4 py-3"><Badge aktif={k.aktif} /></td>
                       <td className="px-4 py-3">
                         <button
                           type="button"
                           onClick={() => mintaKonfirmasi(k, k.aktif ? 'nonaktif' : 'aktif')}
                           disabled={memproses !== null}
-                          className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold border transition disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap ${k.aktif ? 'border-red-200 text-red-600 bg-red-50 hover:bg-red-100' : 'border-emerald-600 text-white bg-emerald-600 hover:bg-emerald-700'}`}
+                          className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold border transition disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap ${k.aktif ? 'border-red-200 dark:border-red-800 text-red-600 dark:text-red-300 bg-red-50 dark:bg-red-900/30 hover:bg-red-100' : 'border-emerald-600 text-white bg-emerald-600 hover:bg-emerald-700'}`}
                         >
                           {memproses === k.user_id && <span className="h-3 w-3 border-2 border-current border-t-transparent rounded-full animate-spin" />}
                           {memproses === k.user_id ? 'Memproses...' : (k.aktif ? 'Nonaktifkan' : 'Aktifkan')}
@@ -214,35 +227,35 @@ export default function Admin() {
 
             {/* Mobile: kartu */}
             <div className="md:hidden space-y-3 mb-4">
-              {hasil.map(k => (
-                <div key={k.user_id} className="rounded-2xl bg-white border border-emerald-100 shadow-sm p-4">
+              {hasilHalaman.map(k => (
+                <div key={k.user_id} className="rounded-2xl bg-white dark:bg-gray-800 border border-emerald-100 dark:border-gray-700 shadow-sm p-4">
                   <div className="flex items-start justify-between gap-2 mb-1">
-                    <div className="font-extrabold text-emerald-800 break-words min-w-0">{k.nama_kos || '-'}</div>
+                    <div className="font-extrabold text-emerald-800 dark:text-emerald-300 break-words min-w-0">{k.nama_kos || '-'}</div>
                     <Badge aktif={k.aktif} />
                   </div>
-                  <div className="text-sm text-emerald-600 break-words">{k.nama_pemilik || '-'}</div>
-                  <div className="text-xs text-emerald-500 break-all">{k.email || '-'}</div>
-                  {k.alamat && <div className="text-xs text-emerald-400 break-words mt-0.5">{k.alamat}</div>}
+                  <div className="text-sm text-emerald-600 dark:text-emerald-300 break-words">{k.nama_pemilik || '-'}</div>
+                  <div className="text-xs text-emerald-500 dark:text-emerald-400 dark:text-emerald-300 break-all">{k.email || '-'}</div>
+                  {k.alamat && <div className="text-xs text-emerald-400 dark:text-emerald-300 break-words mt-0.5">{k.alamat}</div>}
                   <div className="grid grid-cols-3 gap-2 mt-3 text-center">
-                    <div className="bg-emerald-50 rounded-xl py-2 px-1">
-                      <div className="text-[10px] font-bold text-emerald-400 uppercase">Kamar</div>
-                      <div className="text-sm font-extrabold text-emerald-800">{k.jumlah_kamar || 0}</div>
+                    <div className="bg-emerald-50 dark:bg-gray-800/50 rounded-xl py-2 px-1">
+                      <div className="text-[10px] font-bold text-emerald-400 dark:text-emerald-300 uppercase">Kamar</div>
+                      <div className="text-sm font-extrabold text-emerald-800 dark:text-emerald-300">{k.jumlah_kamar || 0}</div>
                     </div>
-                    <div className="bg-emerald-50 rounded-xl py-2 px-1">
-                      <div className="text-[10px] font-bold text-emerald-400 uppercase">Terisi</div>
-                      <div className="text-sm font-extrabold text-emerald-800">{k.kamar_terisi || 0} ({okupansiPct(k)}%)</div>
+                    <div className="bg-emerald-50 dark:bg-gray-800/50 rounded-xl py-2 px-1">
+                      <div className="text-[10px] font-bold text-emerald-400 dark:text-emerald-300 uppercase">Terisi</div>
+                      <div className="text-sm font-extrabold text-emerald-800 dark:text-emerald-300">{k.kamar_terisi || 0} ({okupansiPct(k)}%)</div>
                     </div>
-                    <div className="bg-emerald-50 rounded-xl py-2 px-1">
-                      <div className="text-[10px] font-bold text-emerald-400 uppercase">Sewa</div>
-                      <div className="text-sm font-extrabold text-emerald-800">{k.sewa_aktif || 0}</div>
+                    <div className="bg-emerald-50 dark:bg-gray-800/50 rounded-xl py-2 px-1">
+                      <div className="text-[10px] font-bold text-emerald-400 dark:text-emerald-300 uppercase">Sewa</div>
+                      <div className="text-sm font-extrabold text-emerald-800 dark:text-emerald-300">{k.sewa_aktif || 0}</div>
                     </div>
                   </div>
-                  <div className="text-xs text-emerald-500 mt-2">Terdaftar: {formatTanggal(k.terdaftar)}</div>
+                  <div className="text-xs text-emerald-500 dark:text-emerald-400 dark:text-emerald-300 mt-2">Terdaftar: {formatTanggal(k.terdaftar)}</div>
                   <button
                     type="button"
                     onClick={() => mintaKonfirmasi(k, k.aktif ? 'nonaktif' : 'aktif')}
                     disabled={memproses !== null}
-                    className={`mt-3 w-full inline-flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl text-sm font-bold border transition disabled:opacity-50 disabled:cursor-not-allowed ${k.aktif ? 'border-red-200 text-red-600 bg-red-50 hover:bg-red-100' : 'border-emerald-600 text-white bg-emerald-600 hover:bg-emerald-700'}`}
+                    className={`mt-3 w-full inline-flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl text-sm font-bold border transition disabled:opacity-50 disabled:cursor-not-allowed ${k.aktif ? 'border-red-200 dark:border-red-800 text-red-600 dark:text-red-300 bg-red-50 dark:bg-red-900/30 hover:bg-red-100' : 'border-emerald-600 text-white bg-emerald-600 hover:bg-emerald-700'}`}
                   >
                     {memproses === k.user_id && <span className="h-3.5 w-3.5 border-2 border-current border-t-transparent rounded-full animate-spin" />}
                     {memproses === k.user_id ? 'Memproses...' : (k.aktif ? 'Nonaktifkan' : 'Aktifkan')}
@@ -250,10 +263,20 @@ export default function Admin() {
                 </div>
               ))}
             </div>
+            <div className="mt-4">
+              <Pagination
+                halaman={halaman}
+                perHalaman={perHalaman}
+                total={hasil.length}
+                onUbahHalaman={setHalaman}
+                onUbahPerHalaman={setPerHalaman}
+                loading={loading}
+              />
+            </div>
           </>
         )}
 
-        <p className="text-xs text-emerald-500 bg-emerald-50 border border-emerald-100 rounded-xl px-3 py-2">
+        <p className="text-xs text-emerald-500 dark:text-emerald-400 dark:text-emerald-300 bg-emerald-50 dark:bg-gray-800/50 border border-emerald-100 dark:border-gray-700 rounded-xl px-3 py-2">
           Admin hanya melihat data ringkasan. Data penghuni tidak ditampilkan demi privasi.
         </p>
 
@@ -265,7 +288,7 @@ export default function Admin() {
             ? `Akun "${konfirmasi?.nama}" akan diaktifkan kembali. Pemilik bisa masuk ke aplikasi dan mengakses datanya seperti semula.`
             : `Akun "${konfirmasi?.nama}" akan dinonaktifkan. Pemilik tidak bisa masuk ke aplikasi dan datanya tidak bisa diakses sampai akun diaktifkan kembali. Data tidak akan dihapus.`}
           confirmLabel={konfirmasi?.aksi === 'aktif' ? 'Ya, Aktifkan' : 'Ya, Nonaktifkan'}
-          confirmClass={konfirmasi?.aksi === 'aktif' ? 'bg-emerald-600 hover:bg-emerald-700' : 'bg-red-500 hover:bg-red-600'}
+          confirmClass={konfirmasi?.aksi === 'aktif' ? 'bg-emerald-600 hover:bg-emerald-700' : 'bg-red-50 dark:bg-red-900/300 hover:bg-red-600'}
           onConfirm={jalankanAksi}
           onCancel={() => { if (!memproses) setKonfirmasi(null) }}
         />
